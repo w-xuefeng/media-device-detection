@@ -1,0 +1,11 @@
+.media-device-detection-panel {
+  --action-bar-height: 60px;
+  --width: clamp(500px, 80vw, 1000px);
+  --height: clamp(300px, 50vh, 500px);
+
+  display: flex;
+  flex-direction: column;
+  width: var(--width);
+  height: var(--height);
+  border-color: transparent;
+}

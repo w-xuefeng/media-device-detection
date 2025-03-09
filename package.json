@@ -1,0 +1,34 @@
+{
+  "name": "media-device-detection",
+  "version": "1.0.0",
+  "main": "lib/index.cjs.js",
+  "module": "lib/index.esm.js",
+  "types": "lib/types/index.d.ts",
+  "type": "module",
+  "files": [
+    "lib"
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/index.esm.js",
+      "require": "./lib/index.cjs.js"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf lib",
+    "build": "bun run scripts/style-loader.js && bun clean && tsc -b ./tsconfig.types.json && rolldown -c",
+    "test": "bun run build && bun test/serve.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "bun-types": "^1.2.4",
+    "open": "^10.1.0",
+    "rimraf": "^6.0.1",
+    "rolldown": "^1.0.0-beta.3",
+    "use-types": "^0.0.4"
+  }
+}
