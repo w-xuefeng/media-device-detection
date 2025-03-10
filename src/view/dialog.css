@@ -1,7 +1,7 @@
 .media-device-detection-dialog {
   --action-bar-height: 38px;
   --width: clamp(500px, 80vw, 1000px);
-  --height: clamp(300px, 50vh, 500px);
+  --height: clamp(300px, 60vh, 500px);
 
   display: flex;
   flex-direction: column;
@@ -42,8 +42,25 @@
   }
 
   .permission {
+    display: none;
+  }
+
+  .permission:has(div) {
     display: flex;
     flex-direction: column;
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffffff;
+    background: #ff0000;
+    padding: 10px 20px;
+    border: 1px solid #f40;
+    border-radius: 4px;
+    justify-content: center;
+    align-items: center;
+    line-height: 20px;
+    font-size: 16px;
     .no-permission {
       margin-top: 4px;
     }
@@ -67,6 +84,11 @@
 
     .media-select {
       width: 100%;
+      padding: 8px 0;
+      border: 1px solid #eee;
+      color: #666;
+      cursor: pointer;
+      outline: none;
     }
     .camera-video {
       border: 1px solid #eaeaea;
@@ -79,6 +101,23 @@
 
     .microphone-sound {
       flex: 1;
+
+      .sound-play {
+        width: 100%;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        border-radius: 2px;
+        border: 1px solid #dcdfe6;
+        margin-top: 20px;
+        padding: 0px 8px;
+        box-sizing: border-box;
+        cursor: pointer;
+
+        .sound-play-right {
+          margin-left: auto;
+        }
+      }
 
       .microphone-detection {
         width: 100%;
@@ -105,5 +144,11 @@
         }
       }
     }
+  }
+
+  .disabled {
+    background-color: #f5f7fa;
+    color: #b1b4ba;
+    cursor: not-allowed !important;
   }
 }

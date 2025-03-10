@@ -1,6 +1,7 @@
-/// <reference types="use-types" />
 export interface ICameraInfo extends MediaTrackCapabilities {
     InputDeviceInfo: MediaDeviceInfo;
+    extraDeviceId?: string;
+    extraLabel?: string;
 }
 export interface IMediaDeviceDetectionOptions {
     onGetCameraError: (error: Error) => void;
@@ -16,6 +17,10 @@ export default class MediaDeviceDetection {
     onGetMicrophoneError: IMediaDeviceDetectionOptions["onGetMicrophoneError"];
     onGetAudioOutputError: IMediaDeviceDetectionOptions["onGetAudioOutputError"];
     constructor(options?: Partial<IMediaDeviceDetectionOptions>);
+    /**
+     * 监听 摄像头和麦克风 权限变化
+     */
+    watchPermissions(onPermissionChange: (type: "camera" | "microphone", current: string, event: Event) => void): AbortController;
     /**
      * 获取摄像头列表
      */

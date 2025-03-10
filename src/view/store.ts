@@ -15,7 +15,11 @@ export const panelContainerName = `${prefix}panel`;
 export const dialogStyle = style.dialog;
 export const panelStyle = style.panel;
 
-export const { value: globalStore, onProperty: onStoreChange } = watchObject(
+export const {
+  value: globalStore,
+  onChange: onStoreChange,
+  clean: cleanStoreEvent,
+} = watchObject(
   {
     currentIds: {
       camera: "",

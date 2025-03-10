@@ -145,10 +145,31 @@ export function setCssVar(
   });
 }
 
+let a = new Proxy({}, {});
+
 export interface IWatchObjectOptions {
   deep?: boolean;
   excludeType?: any[];
 }
+
+export type DeepFlatKeyOf<T> = T extends Record<string, any>
+  ? {
+      [k in keyof T]: k extends string
+        ? T[k] extends Array<any>
+          ? k
+          : T[k] extends object
+          ? T[k] extends HTMLElement
+            ? k
+            : T[k] extends CSSConditionRule
+            ? k
+            : T[k] extends AudioDestinationNode
+            ? k
+            : k | DeepFlatKeyOf<T[k]>
+          : k
+        : never;
+    }[keyof T]
+  : never;
+
 export function watchObject<T extends object>(
   object: T,
   options: IWatchObjectOptions = {
@@ -194,7 +215,7 @@ export function watchObject<T extends object>(
   }
 
   function onProperty(
-    property: keyof T,
+    property: DeepFlatKeyOf<T>,
     callback: ObjectChangedPropertyEvent,
     once = false
   ) {
@@ -223,6 +244,28 @@ export function watchObject<T extends object>(
       return;
     }
     events.push(callback);
+  }
+
+  function onProperties(
+    property: DeepFlatKeyOf<T>[],
+    callback: ObjectChangedPropertyEvent,
+    once = false
+  ) {
+    property.forEach((p) => {
+      onProperty(p, callback, once);
+    });
+  }
+
+  function onChange(
+    properties: DeepFlatKeyOf<T> | DeepFlatKeyOf<T>[],
+    callback: ObjectChangedPropertyEvent,
+    once = false
+  ) {
+    onProperties(
+      Array.isArray(properties) ? properties : [properties],
+      callback,
+      once
+    );
   }
 
   function off(callback: Function) {
@@ -310,19 +353,23 @@ export function watchObject<T extends object>(
     off,
     clean,
     onProperty,
+    onProperties,
+    onChange,
   };
 }
 
 export function h<K extends keyof HTMLElementTagNameMap>(
   tagName: K,
-  properties?: Partial<Record<keyof HTMLElement, any>> & {
-    attrs?: Record<string, string>;
-    on?: Record<
-      string | keyof HTMLElementEventMap,
-      EventListenerOrEventListenerObject
-    >;
-    [k: string]: any;
-  },
+  properties?:
+    | (Partial<Record<keyof HTMLElement, any>> & {
+        attrs?: Record<string, string>;
+        on?: Record<
+          string | keyof HTMLElementEventMap,
+          EventListenerOrEventListenerObject
+        >;
+        [k: string]: any;
+      })
+    | null,
   children?: (HTMLElement | Node | string)[] | string | HTMLElement | Node
 ) {
   const container = document.createElement<K>(tagName);
@@ -368,17 +415,38 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   return container;
 }
 
-export function rerender(
+export function rerenderChildren(
   viewContainer: HTMLElement,
-  creator: () => HTMLElement | Node | string | (HTMLElement | Node | string)[]
+  childrenCreator: () =>
+    | HTMLElement
+    | Node
+    | string
+    | (HTMLElement | Node | string)[]
 ) {
+  const next = childrenCreator();
+  const nextArray = Array.isArray(next) ? next : [next];
   Array.from(viewContainer.children).forEach((e) =>
     viewContainer.removeChild(e)
   );
-  const next = creator();
-  viewContainer.append.apply(
-    viewContainer,
-    Array.isArray(next) ? next : [next]
-  );
+  viewContainer.append.apply(viewContainer, nextArray);
   return viewContainer;
+}
+
+export function rerender(
+  viewContainer: HTMLElement,
+  options: {
+    item: HTMLElement;
+    render: () => HTMLElement;
+  }[]
+) {
+  const result: HTMLElement[] = [];
+  options.forEach((option) => {
+    if (option.item.parentElement === viewContainer) {
+      const next = option.render();
+      viewContainer.insertBefore(next, option.item);
+      option.item.remove();
+      result.push(next);
+    }
+  });
+  return result;
 }

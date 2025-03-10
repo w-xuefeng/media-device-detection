@@ -29,6 +29,7 @@
     "open": "^10.1.0",
     "rimraf": "^6.0.1",
     "rolldown": "^1.0.0-beta.3",
+    "typescript": "^5.8.2",
     "use-types": "^0.0.4"
   }
 }

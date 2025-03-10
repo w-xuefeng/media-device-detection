@@ -1,4 +1,4 @@
-import { defineConfig, build } from "rolldown";
+import { defineConfig } from "rolldown";
 import terser from "@rollup/plugin-terser";
 
 export default defineConfig([

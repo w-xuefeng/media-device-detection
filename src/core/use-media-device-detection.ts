@@ -68,10 +68,31 @@ export function useMediaDeviceDetection(
     globalThis.addEventListener(CGF.volumeChangeEventName, onVolumeChange);
 
     if (options?.video) {
-      mediaDeviceDetection.getCameraList().then((list) => {
-        cameraList.value = list || [];
-        options?.onCameraListReady?.(list || []);
-      });
+      mediaDeviceDetection
+        .getCameraList()
+        .then((list) =>
+          list?.map((e, i) => {
+            if (!e.InputDeviceInfo.label) {
+              Reflect.set(
+                e,
+                "extraLabel",
+                `默认摄像头(Built-In) ${i > 0 ? `${i + 1}` : ""}`
+              );
+            }
+            if (!e.deviceId) {
+              Reflect.set(
+                e,
+                "extraDeviceId",
+                `default${i > 0 ? `${i + 1}` : ""}`
+              );
+            }
+            return e as ICameraInfo;
+          })
+        )
+        .then((list) => {
+          cameraList.value = list || [];
+          options?.onCameraListReady?.(list || []);
+        });
     }
 
     if (options?.audio) {

@@ -3,6 +3,8 @@ import CGF from "./config";
 
 export interface ICameraInfo extends MediaTrackCapabilities {
   InputDeviceInfo: MediaDeviceInfo;
+  extraDeviceId?: string;
+  extraLabel?: string;
 }
 
 export interface IMediaDeviceDetectionOptions {
@@ -44,6 +46,43 @@ export default class MediaDeviceDetection {
     if (typeof options?.onGetAudioOutputError === "function") {
       this.onGetAudioOutputError = options.onGetAudioOutputError;
     }
+  }
+
+  /**
+   * 监听 摄像头和麦克风 权限变化
+   */
+  watchPermissions(
+    onPermissionChange: (
+      type: "camera" | "microphone",
+      current: string,
+      event: Event
+    ) => void
+  ) {
+    const controller = new AbortController();
+    const watch = async () => {
+      const micPermission = await navigator.permissions.query({
+        name: "microphone",
+      });
+      const camPermission = await navigator.permissions.query({
+        name: "camera",
+      });
+      const microphonePermissionChange = (event: Event) => {
+        const target = event.target as PermissionStatus;
+        onPermissionChange("microphone", target.state, event);
+      };
+      const cameraPermissionChange = (event: Event) => {
+        const target = event.target as PermissionStatus;
+        onPermissionChange("camera", target.state, event);
+      };
+      micPermission.addEventListener("change", microphonePermissionChange, {
+        signal: controller.signal,
+      });
+      camPermission.addEventListener("change", cameraPermissionChange, {
+        signal: controller.signal,
+      });
+    };
+    watch();
+    return controller;
   }
 
   /**

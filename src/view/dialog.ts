@@ -5,8 +5,16 @@ import {
   type IAudioOutputDeviceInfo,
   type IUseMediaDeviceDetectionOptions,
 } from "../core/use-media-device-detection";
-import { addClass, addCSS, h, rerender, setCssVar } from "../utils";
 import {
+  addClass,
+  addCSS,
+  h,
+  rerender,
+  rerenderChildren,
+  setCssVar,
+} from "../utils";
+import {
+  cleanStoreEvent,
   dialogContainerName,
   dialogStyle,
   globalStore,
@@ -33,6 +41,71 @@ const onCameraChange = (store: TGlobalStore) => {
     updateCurrentCameraMediaStream(store, store.currentCamera);
   };
 };
+
+const onAudioOutputDeviceChange = (store: TGlobalStore) => {
+  return function (this: HTMLSelectElement) {
+    store.currentAudioOutputDevice = store.audioOutputList.find(
+      (e) => e.deviceId === this.value
+    )!;
+    updateCurrentAudioContext(store, store.currentAudioOutputDevice.deviceId);
+  };
+};
+
+const onMicrophoneChange = (store: TGlobalStore) => {
+  return function (this: HTMLSelectElement) {
+    store.currentMicrophone =
+      store.microphoneList.find((e) => e.deviceId === this.value) || null;
+    store.mediaDeviceDetection?.testMicrophone(this.value);
+  };
+};
+
+function permissionView(
+  store: TGlobalStore,
+  options: IUseMediaDeviceDetectionOptions
+) {
+  const createPermissionContent = () => {
+    let videoPermissionTips: HTMLElement | null = null;
+    let audioPermissionTips: HTMLElement | null = null;
+    let audioOutputPermissionTips: HTMLElement | null = null;
+    if (options.video && !store.permission.camera) {
+      videoPermissionTips = h(
+        "div",
+        { className: "no-permission" },
+        "未开启摄像头权限，请在开启权限后重试"
+      );
+    }
+    if (options.audio && !store.permission.microphone) {
+      audioPermissionTips = h(
+        "div",
+        {
+          className: "no-permission",
+        },
+        "未开启麦克风权限，请在开启权限后重试"
+      );
+    }
+    if (options.audio && !store.permission.audioOutput) {
+      audioOutputPermissionTips = h(
+        "div",
+        { className: "no-permission" },
+        "未开启扬声器权限，请在开启权限后重试"
+      );
+    }
+    return [
+      videoPermissionTips,
+      audioPermissionTips,
+      audioOutputPermissionTips,
+    ].filter((e) => !!e);
+  };
+  const permissionTipsContainer = h(
+    "div",
+    { className: "permission" },
+    createPermissionContent()
+  );
+  onStoreChange(["permission", "camera", "microphone", "audioOutput"], () => {
+    rerenderChildren(permissionTipsContainer, createPermissionContent);
+  });
+  return permissionTipsContainer;
+}
 
 function cameraDetectionView(
   store: TGlobalStore,
@@ -61,10 +134,8 @@ function cameraDetectionView(
         {
           className: "media-select",
           value: store.currentIds.camera,
-          attrs: {
-            placeholder: "请选择一个摄像头",
-            disabled: String(!store.permission.camera),
-          },
+          placeholder: "请选择一个摄像头",
+          disabled: !store.permission.camera,
           on: {
             change: onCameraChange(store),
           },
@@ -73,9 +144,9 @@ function cameraDetectionView(
           h(
             "option",
             {
-              value: e.deviceId,
+              value: e.deviceId || e.extraDeviceId,
             },
-            e.InputDeviceInfo.label
+            e.InputDeviceInfo.label || e.extraLabel
           )
         )
       ),
@@ -85,8 +156,8 @@ function cameraDetectionView(
 
   const view = h("div", { className: "camera" }, createCameraContent());
 
-  onStoreChange("cameraList", () => {
-    rerender(view, createCameraContent);
+  onStoreChange(["cameraList", "permission", "camera"], () => {
+    rerenderChildren(view, createCameraContent);
   });
 
   return view;
@@ -99,153 +170,150 @@ function microphoneDetectionView(
   if (!options.audio) {
     return null;
   }
-  const lines = new Array(10).fill(0).map((_, i) =>
-    h("div", {
-      className: "line-gap",
-      style: {
-        left: `${i * 10}%`,
-      },
-    })
-  );
-  const volumeRef = h("div", {
-    className: "microphone-voice",
-  });
-  store.volumeRef = volumeRef;
-  const microphoneDetection = h("div", { className: "microphone-detection" }, [
-    ...lines,
-    volumeRef,
-  ]);
-  return h("div", { className: "microphone-sound" }, [microphoneDetection]);
-}
 
-function permissionView(
-  store: TGlobalStore,
-  options: IUseMediaDeviceDetectionOptions
-) {
-  let videoPermissionTips: HTMLElement | null = null;
-  let audioPermissionTips: HTMLElement | null = null;
-  let audioOutputPermissionTips: HTMLElement | null = null;
-  if (options.video && !store.permission.camera) {
-    videoPermissionTips = h(
-      "div",
-      { className: "no-permission" },
-      "未开启摄像头权限，请在开启权限后重试"
+  const renderIcon = () => {
+    return [
+      store.audioPaused ? h("div", null, "播放") : h("div", null, "暂停"),
+    ];
+  };
+  const icon = h("div", { className: "sound-play-right" }, renderIcon());
+
+  onStoreChange("audioPaused", () => {
+    rerenderChildren(icon, renderIcon);
+  });
+
+  const renderMicrophoneDetection = () => {
+    const lines = new Array(10).fill(0).map((_, i) =>
+      h("div", {
+        className: "line-gap",
+        style: {
+          left: `${i * 10}%`,
+        },
+      })
     );
-  }
-  if (options.audio && !store.permission.microphone) {
-    audioPermissionTips = h(
+    const volumeRef = h("div", {
+      className: "microphone-voice",
+    });
+    store.volumeRef = volumeRef;
+    return h("div", { className: "microphone-detection" }, [
+      ...lines,
+      volumeRef,
+    ]);
+  };
+
+  const renderAudioOutputSelect = () =>
+    h(
+      "select",
+      {
+        value: store.currentIds.audioOutput,
+        className: "media-select",
+        placeholder: "请选择一个扬声器",
+        disabled: !store.permission.audioOutput || !store.permission.microphone,
+        on: {
+          change: onAudioOutputDeviceChange(store),
+        },
+      },
+      store.audioOutputList.map((e) =>
+        h(
+          "option",
+          {
+            value: e.deviceId || e.extraDeviceId,
+          },
+          e.label || e.extraLabel
+        )
+      )
+    );
+  const renderAudioOutputPlay = () => {
+    const audio = h("audio", {
+      className: "audio-output",
+    });
+    store.audioRef = audio;
+    return h(
       "div",
       {
-        className: "no-permission",
+        className: [
+          "sound-play",
+          !store.permission.audioOutput || !store.permission.microphone
+            ? "disabled"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
+        on: {
+          click: togglePlayAudio(store),
+        },
       },
-      "未开启麦克风权限，请在开启权限后重试"
+      [h("span", null, "播放声音"), audio, icon]
     );
-  }
-  if (options.audio && !store.permission.audioOutput) {
-    audioOutputPermissionTips = h(
-      "div",
-      { className: "no-permission" },
-      "未开启扬声器权限，请在开启权限后重试"
+  };
+  const renderMicrophoneSelect = () =>
+    h(
+      "select",
+      {
+        value: store.currentIds.microphone,
+        className: "media-select",
+        placeholder: "请选择一个麦克风",
+        disabled: !store.permission.microphone,
+        on: {
+          change: onMicrophoneChange(store),
+        },
+      },
+      store.microphoneList.map((e) =>
+        h(
+          "option",
+          {
+            value: e.deviceId || e.extraDeviceId,
+          },
+          e.label || e.extraLabel
+        )
+      )
     );
-  }
-  const permissionTipsContainer = h(
-    "div",
-    { className: "permission" },
+
+  let audioSelect = renderAudioOutputSelect();
+  let audioOutputPlay = renderAudioOutputPlay();
+  let microphoneSelect = renderMicrophoneSelect();
+
+  const microphoneSoundContainer = h("div", { className: "microphone-sound" }, [
+    h("h3", { className: "label" }, "扬声器"),
+    audioSelect,
+    audioOutputPlay,
+    h("h3", { className: "label", style: "margin-top: 20px" }, "麦克风"),
+    microphoneSelect,
+    renderMicrophoneDetection(),
+  ]);
+
+  onStoreChange(
     [
-      videoPermissionTips,
-      audioPermissionTips,
-      audioOutputPermissionTips,
-    ].filter((e) => !!e)
+      "audioOutputList",
+      "microphoneList",
+      "permission",
+      "microphone",
+      "audioOutput",
+    ],
+    () => {
+      const [nextAudioSelect, nextAudioOutputPlay, nextMicrophoneSelect] =
+        rerender(microphoneSoundContainer, [
+          {
+            item: audioSelect,
+            render: renderAudioOutputSelect,
+          },
+          {
+            item: audioOutputPlay,
+            render: renderAudioOutputPlay,
+          },
+          {
+            item: microphoneSelect,
+            render: renderMicrophoneSelect,
+          },
+        ]);
+      audioSelect = nextAudioSelect as HTMLSelectElement;
+      audioOutputPlay = nextAudioOutputPlay as HTMLDivElement;
+      microphoneSelect = nextMicrophoneSelect as HTMLSelectElement;
+    }
   );
 
-  onStoreChange("permission", (value) => {
-    console.log("🚀 ~ onStoreChange permission ~ value:", value);
-  });
-
-  return permissionTipsContainer.hasChildNodes()
-    ? permissionTipsContainer
-    : null;
+  return microphoneSoundContainer;
 }
-
-// <div class="content">
-//   <div class="camera" v-if="waitDetectionConfig.video">
-//     <h3 class="label">摄像头</h3>
-//     <el-select
-//       v-model="currentIds.camera"
-//       class="media-select"
-//       placeholder="请选择一个摄像头"
-//       size="large"
-//       @change="onCameraChange"
-//       :disabled="!permissionState.camera"
-//     >
-//       <el-option
-//         v-for="(item, i) in cameraList"
-//         :key="`${item.InputDeviceInfo.deviceId}-${i}`"
-//         :label="item.InputDeviceInfo.label"
-//         :value="item.InputDeviceInfo.deviceId"
-//       />
-//     </el-select>
-//     <video ref="cameraVideoRef" class="camera-video" autoplay muted></video>
-//   </div>
-//   <div class="mkf-sound" v-if="waitDetectionConfig.audio">
-//     <h3 class="label">扬声器</h3>
-//     <el-select
-//       v-model="currentIds.audioOutput"
-//       class="media-select"
-//       placeholder="请选择一个扬声器"
-//       size="large"
-//       @change="onAudioOutputDeviceChange"
-//       :disabled="!permissionState.audioOutput || !permissionState.microphone"
-//     >
-//       <el-option
-//         v-for="(item, i) in audioOutputList"
-//         :key="`${item.deviceId}-${i}`"
-//         :label="item.label || item.extraLabel"
-//         :value="item.deviceId"
-//       />
-//     </el-select>
-
-//     <div
-//       class="sound-play"
-//       :class="{ disabled: !permissionState.audioOutput || !permissionState.microphone }"
-//       @click="togglePlayAudio"
-//     >
-//       <span>播放声音</span>
-//       <audio class="audio-output" ref="audioRef"></audio>
-//       <el-icon class="sound-play-right" size="26" color="var(--primary-color)">
-//         <VideoPlay v-if="audioPaused" />
-//         <VideoPause v-else />
-//       </el-icon>
-//     </div>
-
-//     <h3 class="label" style="margin-top: 20px">麦克风</h3>
-//     <el-select
-//       v-model="currentIds.microphone"
-//       class="media-select"
-//       placeholder="请选择一个麦克风"
-//       size="large"
-//       @change="onMicrophoneChange"
-//       :disabled="!permissionState.microphone"
-//     >
-//       <el-option
-//         v-for="(item, i) in microphoneList"
-//         :key="`${item.deviceId}-${i}`"
-//         :label="item.label || item.extraLabel"
-//         :value="item.deviceId"
-//       />
-//     </el-select>
-
-//     <div class="mkf-detection">
-//       <div
-//         class="line-gap"
-//         v-for="line in 9"
-//         :key="line"
-//         :style="{ left: `${line * 10}%` }"
-//       ></div>
-//       <div ref="volumeRef" class="mkf-voice"></div>
-//     </div>
-//   </div>
-// </div>
 
 function defaultDialogContentCreator(
   dialogContainer: HTMLDialogElement,
@@ -259,6 +327,8 @@ function defaultDialogContentCreator(
     ].filter((e) => !!e);
   };
 
+  const tips = permissionView(store, options);
+
   const main = h(
     "main",
     {
@@ -267,47 +337,44 @@ function defaultDialogContentCreator(
     createMainContent()
   );
 
-  const cancelBtn = h(
-    "button",
-    {
-      className: "cancel-btn",
-      on: {
-        click: () => {
-          dialogContainer.close();
-        },
-      },
-    },
-    "取消"
-  );
-
-  const confirmBtn = h(
-    "button",
-    {
-      className: "confirm-btn",
-      on: {
-        click: () => {
-          dialogContainer.close(
-            Object.entries(store.currentIds)
-              .map(([k, v]) => `${k}:${v}`)
-              .join("|")
-          );
-        },
-      },
-    },
-    "确定"
-  );
-
   const actionBar = h(
     "div",
     {
       className: "acton-bar",
     },
-    [cancelBtn, confirmBtn]
+    [
+      h(
+        "button",
+        {
+          className: "cancel-btn",
+          on: {
+            click: () => {
+              dialogContainer.close();
+            },
+          },
+        },
+        "取消"
+      ),
+      h(
+        "button",
+        {
+          className: "confirm-btn",
+          on: {
+            click: () => {
+              dialogContainer.close(
+                Object.entries(store.currentIds)
+                  .map(([k, v]) => `${k}:${v}`)
+                  .join("|")
+              );
+            },
+          },
+        },
+        "确定"
+      ),
+    ]
   );
 
-  const tips = permissionView(store, options);
-
-  return [tips, main, actionBar].filter((e) => !!e);
+  return [tips, main, actionBar];
 }
 
 async function updateCurrentCameraMediaStream(
@@ -331,19 +398,6 @@ async function updateCurrentCameraMediaStream(
     },
   });
   store.cameraVideoRef.srcObject = store.currentCameraStream;
-  console.log("🚀 ~ store.currentCameraStream:", store.currentCameraStream);
-}
-function onMicrophoneChange(
-  store: TGlobalStore,
-  deviceId: string,
-  notUpdateCurrent = false
-) {
-  if (!notUpdateCurrent) {
-    store.currentMicrophone =
-      store.microphoneList.find((e) => e.deviceId === deviceId) || null;
-  }
-  console.log("store.mediaDeviceDetection", store.mediaDeviceDetection);
-  store.mediaDeviceDetection?.testMicrophone(deviceId);
 }
 
 const updateCurrentAudioContext = async (
@@ -378,22 +432,24 @@ const updateCurrentAudioContext = async (
   // deviceOutputSource.connect(mediaStreamDestination);
 };
 
-const togglePlayAudio = async (store: TGlobalStore) => {
-  if (
-    !store?.audioRef ||
-    !store.permission.audioOutput ||
-    !store.permission.microphone
-  ) {
-    return;
-  }
-  if (store.audioRef.paused && store.currentIds.audioOutput) {
-    await updateCurrentAudioContext(store, store.currentIds.audioOutput);
-    store.audioRef.play();
-  } else {
-    store.audioRef.pause();
-    store.currentAudioOutputStream &&
-      methodsStore.releaseStream(store.currentAudioOutputStream);
-  }
+const togglePlayAudio = (store: TGlobalStore) => {
+  return async function () {
+    if (
+      !store?.audioRef ||
+      !store.permission.audioOutput ||
+      !store.permission.microphone
+    ) {
+      return;
+    }
+    if (store.audioRef.paused && store.currentIds.audioOutput) {
+      await updateCurrentAudioContext(store, store.currentIds.audioOutput);
+      store.audioRef.play();
+    } else {
+      store.audioRef.pause();
+      store.currentAudioOutputStream &&
+        methodsStore.releaseStream(store.currentAudioOutputStream);
+    }
+  };
 };
 
 function createDialogContentCreator(
@@ -451,7 +507,7 @@ function createDialogContentCreator(
     store.currentIds.microphone =
       store.currentMicrophone.extraDeviceId || store.currentMicrophone.deviceId;
     store.microphoneList = e;
-    onMicrophoneChange(store, store.currentIds.microphone, true);
+    store.mediaDeviceDetection?.testMicrophone(store.currentIds.microphone);
   };
 
   const onAudioOutputListReady = (list: IAudioOutputDeviceInfo[]) => {
@@ -501,6 +557,11 @@ function createDialogContentCreator(
         onGetAudioOutputError,
       },
     });
+
+    const watcher = mediaDeviceDetection.watchPermissions((type, status) => {
+      store.permission[type] = status === "granted";
+    });
+
     methodsStore.release = release;
     methodsStore.releaseStream = releaseStream;
     store.mediaDeviceDetection = mediaDeviceDetection;
@@ -508,6 +569,7 @@ function createDialogContentCreator(
     store.cameraList = cameraList.value;
     store.audioOutputList = audioOutputList.value;
     dialogContainer.addEventListener("close", () => {
+      watcher.abort();
       release([store.currentCameraStream]);
     });
 
@@ -580,6 +642,7 @@ export function displayDialogView(
       dialog.returnValue
     );
     shadow.root.remove();
+    cleanStoreEvent();
   });
 
   const deviceOk = () => {
