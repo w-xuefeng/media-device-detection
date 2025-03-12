@@ -145,8 +145,6 @@ export function setCssVar(
   });
 }
 
-let a = new Proxy({}, {});
-
 export interface IWatchObjectOptions {
   deep?: boolean;
   excludeType?: any[];
@@ -425,7 +423,7 @@ export function rerenderChildren(
 ) {
   const next = childrenCreator();
   const nextArray = Array.isArray(next) ? next : [next];
-  Array.from(viewContainer.children).forEach((e) =>
+  Array.from(viewContainer.childNodes).forEach((e) =>
     viewContainer.removeChild(e)
   );
   viewContainer.append.apply(viewContainer, nextArray);
