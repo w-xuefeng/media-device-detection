@@ -99,6 +99,17 @@
       background-color: #eaeaea;
     }
 
+    .audio-output-visualization-container {
+      width: 100%;
+      min-height: 160px;
+      margin-block-start: 12px;
+      outline: 1px solid #eee;
+      background-color: #1d1d1d;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
     .microphone-sound {
       flex: 1;
 

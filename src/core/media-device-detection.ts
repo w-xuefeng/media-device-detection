@@ -236,10 +236,7 @@ export default class MediaDeviceDetection {
    */
   releaseMicrophone() {
     this.closeCurrentMicrophone();
-    if (!this.audioContext) {
-      return;
-    }
-    this.audioWorkletNode?.disconnect(this.audioContext.destination);
+    this.audioWorkletNode?.disconnect();
     this.audioContext = null;
   }
 }

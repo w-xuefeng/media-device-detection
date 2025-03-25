@@ -16,18 +16,21 @@ export interface IWatchObjectOptions {
 export type DeepFlatKeyOf<T> = T extends Record<string, any> ? {
     [k in keyof T]: k extends string ? T[k] extends Array<any> ? k : T[k] extends object ? T[k] extends HTMLElement ? k : T[k] extends CSSConditionRule ? k : T[k] extends AudioDestinationNode ? k : k | DeepFlatKeyOf<T[k]> : k : never;
 }[keyof T] : never;
+export type DeepKeyOf<T> = T extends Record<string, any> ? {
+    [k in keyof T]: k extends string ? T[k] extends Array<any> ? k : T[k] extends object ? T[k] extends HTMLElement ? k : T[k] extends CSSConditionRule ? k : T[k] extends AudioDestinationNode ? k : k | `${k}.${DeepKeyOf<T[k]>}` : k : never;
+}[keyof T] : never;
 export declare function watchObject<T extends object>(object: T, options?: IWatchObjectOptions): {
     value: T;
     on: (callback: (newObject: T, changedProperty: string | symbol, newValue: unknown, oldValue: unknown) => void | Promise<void>, once?: boolean) => void;
     off: (callback: Function) => void;
     clean: () => void;
-    onProperty: (property: DeepFlatKeyOf<T>, callback: ((newValue: unknown, oldValue: unknown, newObject: T, changedProperty: string | symbol) => void | Promise<void>) & {
+    onProperty: (property: DeepKeyOf<T>, callback: ((newValue: unknown, oldValue: unknown, newObject: T, changedProperty: string | symbol) => void | Promise<void>) & {
         watchProperties?: (string | symbol)[];
     }, once?: boolean) => void;
-    onProperties: (property: DeepFlatKeyOf<T>[], callback: ((newValue: unknown, oldValue: unknown, newObject: T, changedProperty: string | symbol) => void | Promise<void>) & {
+    onProperties: (property: DeepKeyOf<T>[], callback: ((newValue: unknown, oldValue: unknown, newObject: T, changedProperty: string | symbol) => void | Promise<void>) & {
         watchProperties?: (string | symbol)[];
     }, once?: boolean) => void;
-    onChange: (properties: DeepFlatKeyOf<T> | DeepFlatKeyOf<T>[], callback: ((newValue: unknown, oldValue: unknown, newObject: T, changedProperty: string | symbol) => void | Promise<void>) & {
+    onChange: (properties: DeepKeyOf<T> | DeepKeyOf<T>[], callback: ((newValue: unknown, oldValue: unknown, newObject: T, changedProperty: string | symbol) => void | Promise<void>) & {
         watchProperties?: (string | symbol)[];
     }, once?: boolean) => void;
 };

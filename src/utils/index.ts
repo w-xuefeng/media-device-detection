@@ -1,5 +1,3 @@
-import MediaDeviceDetection from "../core/media-device-detection";
-
 export function getWorkerJsURL(workerScriptContent: string) {
   const blob = new Blob([workerScriptContent], {
     type: "application/javascript",
@@ -168,6 +166,24 @@ export type DeepFlatKeyOf<T> = T extends Record<string, any>
     }[keyof T]
   : never;
 
+export type DeepKeyOf<T> = T extends Record<string, any>
+  ? {
+      [k in keyof T]: k extends string
+        ? T[k] extends Array<any>
+          ? k
+          : T[k] extends object
+          ? T[k] extends HTMLElement
+            ? k
+            : T[k] extends CSSConditionRule
+            ? k
+            : T[k] extends AudioDestinationNode
+            ? k
+            : k | `${k}.${DeepKeyOf<T[k]>}`
+          : k
+        : never;
+    }[keyof T]
+  : never;
+
 export function watchObject<T extends object>(
   object: T,
   options: IWatchObjectOptions = {
@@ -192,6 +208,8 @@ export function watchObject<T extends object>(
 
   let events: ObjectChangedEvent[] = [];
 
+  const internalParentKey = "__parentKey";
+
   function on(callback: ObjectChangedBaseEvent, once = false) {
     if (events.includes(callback)) {
       return;
@@ -213,7 +231,7 @@ export function watchObject<T extends object>(
   }
 
   function onProperty(
-    property: DeepFlatKeyOf<T>,
+    property: DeepKeyOf<T>,
     callback: ObjectChangedPropertyEvent,
     once = false
   ) {
@@ -245,7 +263,7 @@ export function watchObject<T extends object>(
   }
 
   function onProperties(
-    property: DeepFlatKeyOf<T>[],
+    property: DeepKeyOf<T>[],
     callback: ObjectChangedPropertyEvent,
     once = false
   ) {
@@ -255,7 +273,7 @@ export function watchObject<T extends object>(
   }
 
   function onChange(
-    properties: DeepFlatKeyOf<T> | DeepFlatKeyOf<T>[],
+    properties: DeepKeyOf<T> | DeepKeyOf<T>[],
     callback: ObjectChangedPropertyEvent,
     once = false
   ) {
@@ -272,11 +290,15 @@ export function watchObject<T extends object>(
 
   function executeEvent(
     event: ObjectChangedEvent,
+    fullKeyPath: string,
     p: string | symbol,
     target: T,
     newValue: any,
     oldValue: any
   ) {
+    if (p === internalParentKey) {
+      return;
+    }
     if (!(event as ObjectChangedPropertyEvent).watchProperties) {
       (event as ObjectChangedBaseEvent)(target, p, newValue, oldValue);
     } else if (
@@ -300,35 +322,47 @@ export function watchObject<T extends object>(
       ) {
         return value;
       }
-      console.debug("[[GET Object]]", target, p, value);
-      return new Proxy(value, handler);
+
+      const subProxy = new Proxy(value, handler);
+      const parentKey = Reflect.get(target, internalParentKey) || "";
+      console.debug("[[GET Object]]", target, parentKey, value);
+      const fullKeyPath = [parentKey, p].filter(Boolean).join(".");
+      Reflect.set(subProxy, internalParentKey, fullKeyPath);
+      return subProxy;
     },
     set(target, p, newValue) {
       const oldValue = Reflect.get(target, p);
       if (oldValue === newValue) {
         return true;
       }
-      console.debug("[[SET Object]]", target, p, newValue);
+      const parentKey = Reflect.get(target, internalParentKey) || "";
+      const fullKeyPath = [parentKey, p].filter(Boolean).join(".");
+      console.debug("[[SET Object]]", target, fullKeyPath, newValue);
       Reflect.set(target, p, newValue);
       events.forEach((event) =>
-        executeEvent(event, p, target, newValue, oldValue)
+        executeEvent(event, fullKeyPath, p, target, newValue, oldValue)
       );
       return true;
     },
     deleteProperty(target, p) {
       const oldValue = Reflect.get(target, p);
       const rs = Reflect.deleteProperty(target, p);
+      const parentKey = Reflect.get(target, internalParentKey) || "";
+      const fullKeyPath = [parentKey, p].filter(Boolean).join(".");
       events.forEach((event) =>
-        executeEvent(event, p, target, void 0, oldValue)
+        executeEvent(event, fullKeyPath, p, target, void 0, oldValue)
       );
       return rs;
     },
     defineProperty(target, property, attributes) {
       const oldValue = Reflect.get(target, property);
       const rs = Reflect.defineProperty(target, property, attributes);
+      const parentKey = Reflect.get(target, internalParentKey) || "";
+      const fullKeyPath = [parentKey, property].filter(Boolean).join(".");
       events.forEach((event) =>
         executeEvent(
           event,
+          fullKeyPath,
           property,
           target,
           attributes?.value || attributes?.get?.(),

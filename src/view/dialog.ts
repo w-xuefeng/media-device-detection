@@ -12,7 +12,10 @@ import {
   rerender,
   rerenderChildren,
   setCssVar,
+  throttle,
 } from "../utils";
+import { IconPause, IconPlay } from "../utils/assets";
+import AudioVisualization from "../utils/audio-visualization";
 import {
   cleanStoreEvent,
   dialogContainerName,
@@ -47,7 +50,7 @@ const onAudioOutputDeviceChange = (store: TGlobalStore) => {
     store.currentAudioOutputDevice = store.audioOutputList.find(
       (e) => e.deviceId === this.value
     )!;
-    updateCurrentAudioContext(store, store.currentAudioOutputDevice.deviceId);
+    updateCurrentAudioContext(store, this.value);
   };
 };
 
@@ -101,9 +104,17 @@ function permissionView(
     { className: "permission" },
     createPermissionContent()
   );
-  onStoreChange(["permission", "camera", "microphone", "audioOutput"], () => {
-    rerenderChildren(permissionTipsContainer, createPermissionContent);
-  });
+  onStoreChange(
+    [
+      "permission",
+      "permission.camera",
+      "permission.microphone",
+      "permission.audioOutput",
+    ],
+    () => {
+      rerenderChildren(permissionTipsContainer, createPermissionContent);
+    }
+  );
   return permissionTipsContainer;
 }
 
@@ -156,7 +167,7 @@ function cameraDetectionView(
 
   const view = h("div", { className: "camera" }, createCameraContent());
 
-  onStoreChange(["cameraList", "permission", "camera"], () => {
+  onStoreChange(["cameraList", "permission.camera"], () => {
     rerenderChildren(view, createCameraContent);
   });
 
@@ -173,7 +184,9 @@ function microphoneDetectionView(
 
   const renderIcon = () => {
     return [
-      store.audioPaused ? h("div", null, "播放") : h("div", null, "暂停"),
+      store.audioPaused
+        ? h("div", { innerHTML: IconPlay })
+        : h("div", { innerHTML: IconPause }),
     ];
   };
   const icon = h("div", { className: "sound-play-right" }, renderIcon());
@@ -223,6 +236,14 @@ function microphoneDetectionView(
         )
       )
     );
+
+  const renderAudioOutputVisualizationContainer = () => {
+    const container = h("div", {
+      className: "audio-output-visualization-container",
+    });
+    store.audioOutputVisualizationContainer = container;
+    return container;
+  };
   const renderAudioOutputPlay = () => {
     const audio = h("audio", {
       className: "audio-output",
@@ -271,12 +292,15 @@ function microphoneDetectionView(
 
   let audioSelect = renderAudioOutputSelect();
   let audioOutputPlay = renderAudioOutputPlay();
+  let audioOutputVisualizationContainer =
+    renderAudioOutputVisualizationContainer();
   let microphoneSelect = renderMicrophoneSelect();
 
   const microphoneSoundContainer = h("div", { className: "microphone-sound" }, [
     h("h3", { className: "label" }, "扬声器"),
     audioSelect,
     audioOutputPlay,
+    audioOutputVisualizationContainer,
     h("h3", { className: "label", style: "margin-top: 20px" }, "麦克风"),
     microphoneSelect,
     renderMicrophoneDetection(),
@@ -287,29 +311,50 @@ function microphoneDetectionView(
       "audioOutputList",
       "microphoneList",
       "permission",
-      "microphone",
-      "audioOutput",
+      "permission.microphone",
+      "permission.audioOutput",
     ],
     () => {
-      const [nextAudioSelect, nextAudioOutputPlay, nextMicrophoneSelect] =
-        rerender(microphoneSoundContainer, [
-          {
-            item: audioSelect,
-            render: renderAudioOutputSelect,
-          },
-          {
-            item: audioOutputPlay,
-            render: renderAudioOutputPlay,
-          },
-          {
-            item: microphoneSelect,
-            render: renderMicrophoneSelect,
-          },
-        ]);
+      const [
+        nextAudioSelect,
+        nextAudioOutputPlay,
+        nextAudioOutputVisualizationContainer,
+        nextMicrophoneSelect,
+      ] = rerender(microphoneSoundContainer, [
+        {
+          item: audioSelect,
+          render: renderAudioOutputSelect,
+        },
+        {
+          item: audioOutputPlay,
+          render: renderAudioOutputPlay,
+        },
+        {
+          item: audioOutputVisualizationContainer,
+          render: renderAudioOutputVisualizationContainer,
+        },
+        {
+          item: microphoneSelect,
+          render: renderMicrophoneSelect,
+        },
+      ]);
       audioSelect = nextAudioSelect as HTMLSelectElement;
       audioOutputPlay = nextAudioOutputPlay as HTMLDivElement;
       microphoneSelect = nextMicrophoneSelect as HTMLSelectElement;
+      audioOutputVisualizationContainer =
+        nextAudioOutputVisualizationContainer as HTMLDivElement;
     }
+  );
+
+  onStoreChange(
+    ["audioRef"],
+    throttle(
+      (audio) => {
+        AudioVisualization.updateTargetAudio(audio);
+      },
+      1000,
+      { trailing: true }
+    )
   );
 
   return microphoneSoundContainer;
@@ -407,29 +452,30 @@ const updateCurrentAudioContext = async (
   if (!store?.audioRef || !deviceId) {
     return;
   }
-
+  store.currentIds.audioOutput = deviceId;
   if (store.currentAudioOutputStream) {
     store.currentAudioOutputStream.getTracks().forEach((e) => e.stop());
   }
-
   if (!store.audioRef.paused) {
     store.audioRef.pause();
   }
-
-  store.currentAudioOutputStream = await navigator.mediaDevices.getUserMedia({
-    video: false,
-    audio: {
+  if (!store.audioRef.src) {
+    store.audioRef.src = store.audioOutputDetectionMusic;
+  }
+  if (AudioVisualization.isInit) {
+    try {
+      await AudioVisualization.setSinkId(deviceId);
+    } catch {
+      await AudioVisualization.setSinkId(deviceId);
+    }
+  } else {
+    const audioVisualization = await AudioVisualization.create(
       deviceId,
-    },
-  });
-
-  store.audioRef.src = store.audioOutputDetectionMusic;
-  // const audioContext = new AudioContext();
-  // const mediaStreamDestination = audioContext.createMediaStreamDestination();
-  // const audioSource = audioContext.createMediaElementSource(audioRef.value);
-  // audioSource.connect(mediaStreamDestination);
-  // const deviceOutputSource = audioContext.createMediaStreamSource(currentAudioOutputStream.value);
-  // deviceOutputSource.connect(mediaStreamDestination);
+      store.audioRef,
+      store.audioOutputVisualizationContainer
+    );
+    audioVisualization.start();
+  }
 };
 
 const togglePlayAudio = (store: TGlobalStore) => {
@@ -510,6 +556,20 @@ function createDialogContentCreator(
     store.mediaDeviceDetection?.testMicrophone(store.currentIds.microphone);
   };
 
+  const bindAudioOutputPlayEvent = (audio: HTMLAudioElement | null) => {
+    if (!audio) {
+      return;
+    }
+    audio.onplay = () => {
+      store.audioPaused = false;
+      console.log("[[play]]");
+    };
+    audio.onpause = () => {
+      store.audioPaused = true;
+      console.log("[[paused]]");
+    };
+  };
+
   const onAudioOutputListReady = (list: IAudioOutputDeviceInfo[]) => {
     if (!list[0]) {
       store.permission.audioOutput = false;
@@ -522,19 +582,13 @@ function createDialogContentCreator(
       store.currentAudioOutputDevice.deviceId;
     store.audioOutputList = list;
     updateCurrentAudioContext(store, store.currentIds.audioOutput);
-
     /**
      * bind audio play event
      */
-    if (!store.audioRef) {
-      return;
-    }
-    store.audioRef.onplay = () => {
-      store.audioPaused = false;
-    };
-    store.audioRef.onpause = () => {
-      store.audioPaused = true;
-    };
+    bindAudioOutputPlayEvent(store.audioRef);
+    onStoreChange(["audioRef"], (audioRef) => {
+      bindAudioOutputPlayEvent(audioRef as HTMLAudioElement);
+    });
   };
 
   return function (dialogContainer: HTMLDialogElement) {
@@ -641,6 +695,7 @@ export function displayDialogView(
       "🚀 ~ dialog.onClose ~ dialog.returnValue:",
       dialog.returnValue
     );
+    AudioVisualization.stop();
     shadow.root.remove();
     cleanStoreEvent();
   });

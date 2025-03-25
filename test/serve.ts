@@ -27,6 +27,18 @@ function serve(pageContent: string) {
           });
         },
       },
+      "/test.mp3": {
+        GET: async () => {
+          return new Response(
+            Bun.file(path.resolve(import.meta.dir, "test.mp3")),
+            {
+              headers: {
+                "content-type": "text/html;charset=utf-8",
+              },
+            }
+          );
+        },
+      },
     },
   });
 }

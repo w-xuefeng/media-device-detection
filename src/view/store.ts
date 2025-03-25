@@ -39,6 +39,8 @@ export const {
     cameraVideoRef: null as useTypes.data.Nullable<HTMLVideoElement>,
     volumeRef: null as useTypes.data.Nullable<HTMLElement>,
     audioRef: null as useTypes.data.Nullable<HTMLAudioElement>,
+    audioOutputVisualizationContainer:
+      null as useTypes.data.Nullable<HTMLDivElement>,
     currentAudioOutputStream: null as useTypes.data.Nullable<MediaStream>,
     microphoneHasVoice: false,
     audioPaused: true,
@@ -46,8 +48,7 @@ export const {
     cameraList: [] as ICameraInfo[],
     audioOutputList: [] as IAudioOutputDeviceInfo[],
     mediaDeviceDetection: null as useTypes.data.Nullable<MediaDeviceDetection>,
-    audioOutputDetectionMusic:
-      "http://music.163.com/song/media/outer/url?id=447925558.mp3",
+    audioOutputDetectionMusic: "test.mp3",
   },
   {
     deep: true,
