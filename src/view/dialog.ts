@@ -29,10 +29,36 @@ import {
   type TGlobalStore,
 } from "./store";
 
+export interface IMediaDeviceDetectionViewOptions
+  extends IUseMediaDeviceDetectionOptions {
+  testAudioURL?: string;
+}
+
+export interface IMediaDeviceDetectionViewResolveValue {
+  returnValue: string;
+  currentIds: {
+    camera: string;
+    microphone: string;
+    audioOutput: string;
+  };
+  deviceOk: boolean;
+}
+
+export interface IMediaDeviceDetectionViewReturnValue
+  extends Promise<IMediaDeviceDetectionViewResolveValue> {
+  deviceOk: () => boolean;
+  getCurrentIds: () => {
+    camera: string;
+    microphone: string;
+    audioOutput: string;
+  };
+  dialog: HTMLDialogElement;
+}
+
 export type TCustomDialogContentCreator = (
   dialogContainer: HTMLDialogElement,
   store: TGlobalStore,
-  options: IUseMediaDeviceDetectionOptions
+  options: IMediaDeviceDetectionViewOptions
 ) => (HTMLElement | Node)[];
 
 const onCameraChange = (store: TGlobalStore) => {
@@ -499,10 +525,14 @@ const togglePlayAudio = (store: TGlobalStore) => {
 };
 
 function createDialogContentCreator(
-  options: IUseMediaDeviceDetectionOptions,
+  options: IMediaDeviceDetectionViewOptions,
   store: TGlobalStore,
   customDialogContentCreator?: TCustomDialogContentCreator
 ) {
+  if (options.testAudioURL) {
+    store.audioOutputDetectionMusic = options.testAudioURL;
+  }
+
   const onVolumeChange = (e: CustomEvent<number>) => {
     options.onVolumeChange?.(e);
     if (!store.volumeRef) {
@@ -555,21 +585,19 @@ function createDialogContentCreator(
     store.microphoneList = e;
     store.mediaDeviceDetection?.testMicrophone(store.currentIds.microphone);
   };
-
   const bindAudioOutputPlayEvent = (audio: HTMLAudioElement | null) => {
     if (!audio) {
       return;
     }
     audio.onplay = () => {
       store.audioPaused = false;
-      console.log("[[play]]");
+      console.debug("[[play]]", store.audioOutputDetectionMusic);
     };
     audio.onpause = () => {
       store.audioPaused = true;
-      console.log("[[paused]]");
+      console.debug("[[paused]]", store.audioOutputDetectionMusic);
     };
   };
-
   const onAudioOutputListReady = (list: IAudioOutputDeviceInfo[]) => {
     if (!list[0]) {
       store.permission.audioOutput = false;
@@ -590,7 +618,6 @@ function createDialogContentCreator(
       bindAudioOutputPlayEvent(audioRef as HTMLAudioElement);
     });
   };
-
   return function (dialogContainer: HTMLDialogElement) {
     const {
       mediaDeviceDetection,
@@ -680,9 +707,14 @@ function createShadow(
 }
 
 export function displayDialogView(
-  options: IUseMediaDeviceDetectionOptions = { video: true, audio: true },
+  options: IMediaDeviceDetectionViewOptions = {
+    video: true,
+    audio: true,
+  },
   customDialogContentCreator?: TCustomDialogContentCreator
 ) {
+  const { promise, resolve } =
+    Promise.withResolvers<IMediaDeviceDetectionViewResolveValue>();
   const contentCreator = createDialogContentCreator(
     options,
     globalStore,
@@ -690,15 +722,6 @@ export function displayDialogView(
   );
   const dialog = createDialogView(contentCreator);
   const shadow = createShadow("dialog", dialog);
-  dialog.addEventListener("close", () => {
-    console.log(
-      "🚀 ~ dialog.onClose ~ dialog.returnValue:",
-      dialog.returnValue
-    );
-    AudioVisualization.stop();
-    shadow.root.remove();
-    cleanStoreEvent();
-  });
 
   const deviceOk = () => {
     let audioOk = true;
@@ -713,11 +736,31 @@ export function displayDialogView(
         !!globalStore.currentMicrophone &&
         globalStore.microphoneHasVoice;
     }
-    console.log("AudioOk", audioOk, "VideoOk", videoOk);
     return audioOk && videoOk;
   };
-  Reflect.set(dialog, "deviceOk", deviceOk);
+
+  const getCurrentDeviceIds = () => {
+    const rs = { ...globalStore.currentIds };
+    Reflect.deleteProperty(rs, "__parentKey");
+    return rs;
+  };
+
+  dialog.addEventListener("close", () => {
+    AudioVisualization.stop();
+    shadow.root.remove();
+    cleanStoreEvent();
+    const value = {
+      returnValue: dialog.returnValue,
+      currentIds: getCurrentDeviceIds(),
+      deviceOk: deviceOk(),
+    };
+    resolve(value);
+  });
+
+  Reflect.set(promise, "deviceOk", deviceOk);
+  Reflect.set(promise, "getCurrentIds", getCurrentDeviceIds);
+  Reflect.set(promise, "dialog", dialog);
   document.body.append(shadow.root);
   dialog.showModal();
-  return dialog;
+  return promise as IMediaDeviceDetectionViewReturnValue;
 }

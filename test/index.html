@@ -127,11 +127,15 @@
   <button class="btn detection-btn"><span>开始检测</span></button>
   <script id="replace-script"></script>
   <script>
-    const startDetection = () => {
-      globalThis?.mediaDeviceDetection?.displayDialogView?.({
+    const startDetection = async () => {
+      const syncResult = globalThis?.mediaDeviceDetection?.displayDialogView?.({
         video: true,
-        audio: true
+        audio: true,
+        testAudioURL: 'test.mp3'
       })
+      console.log("🚀 ~ startDetection ~ syncResult:", syncResult)
+      const asyncResult = await syncResult;
+      console.log("🚀 ~ startDetection ~ asyncResult:", asyncResult)
     }
     window.onload = () => {
       const btn = document.querySelector('.detection-btn')
