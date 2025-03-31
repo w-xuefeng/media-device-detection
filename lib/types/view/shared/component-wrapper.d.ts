@@ -31,17 +31,12 @@ export declare class MediaDeviceDetectionDialogElement extends HTMLElement {
     constructor(dialog: HTMLDialogElement, options: IMediaDeviceDetectionViewOptions, customDialogContentCreator?: TCustomDialogContentCreator);
     connectedCallback(): void;
     disconnectedCallback(): void;
-    adoptedCallback(): void;
-    attributeChangedCallback(name: string, oldValue: any, newValue: any): void;
 }
 export declare class MediaDeviceDetectionPanelElement extends HTMLElement {
     mediaDeviceDetection: MediaDeviceDetectionBaseElement;
     container: HTMLDivElement;
     constructor(options: IMediaDeviceDetectionViewOptions, customDialogContentCreator?: TCustomDialogContentCreator);
-    connectedCallback(): void;
     disconnectedCallback(): void;
-    adoptedCallback(): void;
-    attributeChangedCallback(name: string, oldValue: any, newValue: any): void;
 }
 export declare function createMediaDeviceDetectionElement(type: MDDEType, options: IMediaDeviceDetectionViewOptions, customDialogContentCreator?: TCustomDialogContentCreator): MediaDeviceDetectionDialogElement | MediaDeviceDetectionPanelElement;
 export {};
