@@ -124,14 +124,6 @@ export class MediaDeviceDetectionDialogElement extends HTMLElement {
   disconnectedCallback() {
     this.mediaDeviceDetection.disconnected();
   }
-
-  adoptedCallback() {}
-
-  attributeChangedCallback(name: string, oldValue: any, newValue: any) {
-    console.debug(
-      `[MediaDeviceDetectionDialogElement] 属性 ${name} 已由 ${oldValue} 变更为 ${newValue}`
-    );
-  }
 }
 
 export class MediaDeviceDetectionPanelElement extends HTMLElement {
@@ -155,18 +147,8 @@ export class MediaDeviceDetectionPanelElement extends HTMLElement {
     });
   }
 
-  connectedCallback() {}
-
   disconnectedCallback() {
     this.mediaDeviceDetection.disconnected();
-  }
-
-  adoptedCallback() {}
-
-  attributeChangedCallback(name: string, oldValue: any, newValue: any) {
-    console.debug(
-      `[MediaDeviceDetectionPanelElement] 属性 ${name} 已由 ${oldValue} 变更为 ${newValue}`
-    );
   }
 }
 
