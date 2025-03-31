@@ -1,65 +1,29 @@
-import { type ICameraInfo } from "../core/media-device-detection";
+import { type ICameraInfo } from "../../core/media-device-detection";
 import {
   useMediaDeviceDetection,
   type IMicrophoneInfo,
   type IAudioOutputDeviceInfo,
   type IUseMediaDeviceDetectionOptions,
-} from "../core/use-media-device-detection";
+} from "../../core/use-media-device-detection";
 import {
-  addClass,
-  addCSS,
   h,
   rerender,
   rerenderChildren,
   setCssVar,
   throttle,
-} from "../utils";
-import { IconPause, IconPlay } from "../utils/assets";
-import AudioVisualization from "../utils/audio-visualization";
+} from "../../utils";
+import { IconPause, IconPlay } from "../../utils/assets";
+import AudioVisualization from "../../utils/audio-visualization";
 import {
-  cleanStoreEvent,
-  dialogContainerName,
-  dialogStyle,
-  globalStore,
+  IPK,
   methodsStore,
   onStoreChange,
-  panelContainerName,
-  panelStyle,
-  prefix,
   type TGlobalStore,
-} from "./store";
-
-export interface IMediaDeviceDetectionViewOptions
-  extends IUseMediaDeviceDetectionOptions {
-  testAudioURL?: string;
-}
-
-export interface IMediaDeviceDetectionViewResolveValue {
-  returnValue: string;
-  currentIds: {
-    camera: string;
-    microphone: string;
-    audioOutput: string;
-  };
-  deviceOk: boolean;
-}
-
-export interface IMediaDeviceDetectionViewReturnValue
-  extends Promise<IMediaDeviceDetectionViewResolveValue> {
-  deviceOk: () => boolean;
-  getCurrentIds: () => {
-    camera: string;
-    microphone: string;
-    audioOutput: string;
-  };
-  dialog: HTMLDialogElement;
-}
-
-export type TCustomDialogContentCreator = (
-  dialogContainer: HTMLDialogElement,
-  store: TGlobalStore,
-  options: IMediaDeviceDetectionViewOptions
-) => (HTMLElement | Node)[];
+} from "../shared/store";
+import type {
+  IMediaDeviceDetectionViewOptions,
+  TCustomDialogContentCreator,
+} from "../shared/types";
 
 const onCameraChange = (store: TGlobalStore) => {
   return function (this: HTMLSelectElement) {
@@ -386,68 +350,6 @@ function microphoneDetectionView(
   return microphoneSoundContainer;
 }
 
-function defaultDialogContentCreator(
-  dialogContainer: HTMLDialogElement,
-  store: TGlobalStore,
-  options: IUseMediaDeviceDetectionOptions
-) {
-  const createMainContent = () => {
-    return [
-      cameraDetectionView(store, options),
-      microphoneDetectionView(store, options),
-    ].filter((e) => !!e);
-  };
-
-  const tips = permissionView(store, options);
-
-  const main = h(
-    "main",
-    {
-      className: "main",
-    },
-    createMainContent()
-  );
-
-  const actionBar = h(
-    "div",
-    {
-      className: "acton-bar",
-    },
-    [
-      h(
-        "button",
-        {
-          className: "cancel-btn",
-          on: {
-            click: () => {
-              dialogContainer.close();
-            },
-          },
-        },
-        "取消"
-      ),
-      h(
-        "button",
-        {
-          className: "confirm-btn",
-          on: {
-            click: () => {
-              dialogContainer.close(
-                Object.entries(store.currentIds)
-                  .map(([k, v]) => `${k}:${v}`)
-                  .join("|")
-              );
-            },
-          },
-        },
-        "确定"
-      ),
-    ]
-  );
-
-  return [tips, main, actionBar];
-}
-
 async function updateCurrentCameraMediaStream(
   store: TGlobalStore,
   camera?: ICameraInfo
@@ -479,9 +381,6 @@ const updateCurrentAudioContext = async (
     return;
   }
   store.currentIds.audioOutput = deviceId;
-  if (store.currentAudioOutputStream) {
-    store.currentAudioOutputStream.getTracks().forEach((e) => e.stop());
-  }
   if (!store.audioRef.paused) {
     store.audioRef.pause();
   }
@@ -518,107 +417,204 @@ const togglePlayAudio = (store: TGlobalStore) => {
       store.audioRef.play();
     } else {
       store.audioRef.pause();
-      store.currentAudioOutputStream &&
-        methodsStore.releaseStream(store.currentAudioOutputStream);
     }
   };
 };
 
-function createDialogContentCreator(
-  options: IMediaDeviceDetectionViewOptions,
+function defaultDialogContentCreator(
+  container: HTMLElement,
   store: TGlobalStore,
-  customDialogContentCreator?: TCustomDialogContentCreator
+  options: IMediaDeviceDetectionViewOptions
 ) {
-  if (options.testAudioURL) {
-    store.audioOutputDetectionMusic = options.testAudioURL;
+  const createMainContent = () => {
+    return [
+      cameraDetectionView(store, options),
+      microphoneDetectionView(store, options),
+    ].filter((e) => !!e);
+  };
+
+  const tips = permissionView(store, options);
+
+  const main = h(
+    "main",
+    {
+      className: "main",
+    },
+    createMainContent()
+  );
+
+  const actionBar = h(
+    "div",
+    {
+      className: "acton-bar",
+    },
+    [
+      h(
+        "button",
+        {
+          className: "cancel-btn",
+          on: {
+            click: () => {
+              options.onClose?.();
+              if (
+                "close" in container &&
+                typeof container["close"] === "function"
+              ) {
+                container.close();
+              }
+            },
+          },
+        },
+        "取消"
+      ),
+      h(
+        "button",
+        {
+          className: "confirm-btn",
+          on: {
+            click: () => {
+              const returnValue = Object.entries(store.currentIds)
+                .filter(([k]) => k !== IPK)
+                .map(([k, v]) => `${k}:${v}`)
+                .join("|");
+              options.onClose?.(returnValue);
+              if (
+                "close" in container &&
+                typeof container["close"] === "function"
+              ) {
+                container.close(returnValue);
+              }
+            },
+          },
+        },
+        "确定"
+      ),
+    ]
+  );
+
+  return [tips, main, actionBar];
+}
+
+export class MediaDeviceDetectionContentCreator {
+  options: IMediaDeviceDetectionViewOptions;
+  store: TGlobalStore;
+  customDialogContentCreator?: TCustomDialogContentCreator;
+
+  constructor(
+    options: IMediaDeviceDetectionViewOptions,
+    store: TGlobalStore,
+    customDialogContentCreator?: TCustomDialogContentCreator
+  ) {
+    this.options = options;
+    this.store = store;
+    this.customDialogContentCreator = customDialogContentCreator;
+    if (options.testAudioURL) {
+      store.audioOutputDetectionMusic = options.testAudioURL;
+    }
   }
 
-  const onVolumeChange = (e: CustomEvent<number>) => {
-    options.onVolumeChange?.(e);
-    if (!store.volumeRef) {
+  #onVolumeChange = (e: CustomEvent<number>) => {
+    this.options.onVolumeChange?.(e);
+    if (!this.store.volumeRef) {
       return;
     }
-    if (!store.microphoneHasVoice && e.detail > 0) {
-      store.microphoneHasVoice = true;
+    if (!this.store.microphoneHasVoice && e.detail > 0) {
+      this.store.microphoneHasVoice = true;
     }
     if (![-Infinity].includes(e.detail) && e.detail >= 0) {
       setCssVar(
         "--volume-width",
         `${e.detail < 1 ? 1 + e.detail : e.detail}%`,
-        store.volumeRef
+        this.store.volumeRef
       );
     }
+
+    if ([-Infinity].includes(e.detail)) {
+      setCssVar("--volume-width", `${Math.random()}%`, this.store.volumeRef);
+    }
   };
-  const onGetCameraError = (e: Error) => {
+
+  #onGetCameraError = (e: Error) => {
     console.log("onGetCameraError", e?.message);
-    store.permission.camera = false;
+    this.store.permission.camera = false;
   };
-  const onGetMicrophoneError = (e: Error) => {
+
+  #onGetMicrophoneError = (e: Error) => {
     console.log("onGetMicrophoneError", e?.message);
-    store.permission.microphone = false;
+    this.store.permission.microphone = false;
   };
-  const onGetAudioOutputError = (e: Error) => {
+
+  #onGetAudioOutputError = (e: Error) => {
     console.log("onGetAudioOutputError", e?.message);
-    store.permission.audioOutput = false;
+    this.store.permission.audioOutput = false;
   };
-  const onCameraListReady = (data: ICameraInfo[]) => {
+
+  #onCameraListReady = (data: ICameraInfo[]) => {
     if (!data[0]) {
-      store.permission.camera = false;
+      this.store.permission.camera = false;
       return;
     }
-    store.permission.camera = true;
-    store.currentCamera = data[0];
-    store.currentIds.camera = store.currentCamera?.InputDeviceInfo.deviceId;
-    store.cameraList = data;
-    updateCurrentCameraMediaStream(store, store.currentCamera);
+    this.store.permission.camera = true;
+    this.store.currentCamera = data[0];
+    this.store.currentIds.camera =
+      this.store.currentCamera?.InputDeviceInfo.deviceId;
+    this.store.cameraList = data;
+    updateCurrentCameraMediaStream(this.store, this.store.currentCamera);
   };
-  const onMicrophoneListReady = (e: IMicrophoneInfo[]) => {
+
+  #onMicrophoneListReady = (e: IMicrophoneInfo[]) => {
     if (!e[0]) {
-      store.permission.microphone = false;
-      store.microphoneList = [];
+      this.store.permission.microphone = false;
+      this.store.microphoneList = [];
       return;
     }
-    store.permission.microphone = true;
-    store.currentMicrophone = e[0];
-    store.currentIds.microphone =
-      store.currentMicrophone.extraDeviceId || store.currentMicrophone.deviceId;
-    store.microphoneList = e;
-    store.mediaDeviceDetection?.testMicrophone(store.currentIds.microphone);
+    this.store.permission.microphone = true;
+    this.store.currentMicrophone = e[0];
+    this.store.currentIds.microphone =
+      this.store.currentMicrophone.extraDeviceId ||
+      this.store.currentMicrophone.deviceId;
+    this.store.microphoneList = e;
+    this.store.mediaDeviceDetection?.testMicrophone(
+      this.store.currentIds.microphone
+    );
   };
-  const bindAudioOutputPlayEvent = (audio: HTMLAudioElement | null) => {
+
+  #bindAudioOutputPlayEvent = (audio: HTMLAudioElement | null) => {
     if (!audio) {
       return;
     }
     audio.onplay = () => {
-      store.audioPaused = false;
-      console.debug("[[play]]", store.audioOutputDetectionMusic);
+      this.store.audioPaused = false;
+      console.debug("[[play]]", this.store.audioOutputDetectionMusic);
     };
     audio.onpause = () => {
-      store.audioPaused = true;
-      console.debug("[[paused]]", store.audioOutputDetectionMusic);
+      this.store.audioPaused = true;
+      console.debug("[[paused]]", this.store.audioOutputDetectionMusic);
     };
   };
-  const onAudioOutputListReady = (list: IAudioOutputDeviceInfo[]) => {
+
+  #onAudioOutputListReady = (list: IAudioOutputDeviceInfo[]) => {
     if (!list[0]) {
-      store.permission.audioOutput = false;
+      this.store.permission.audioOutput = false;
       return;
     }
-    store.permission.audioOutput = true;
-    store.currentAudioOutputDevice = list[0];
-    store.currentIds.audioOutput =
-      store.currentAudioOutputDevice.extraDeviceId ||
-      store.currentAudioOutputDevice.deviceId;
-    store.audioOutputList = list;
-    updateCurrentAudioContext(store, store.currentIds.audioOutput);
+    this.store.permission.audioOutput = true;
+    this.store.currentAudioOutputDevice = list[0];
+    this.store.currentIds.audioOutput =
+      this.store.currentAudioOutputDevice.extraDeviceId ||
+      this.store.currentAudioOutputDevice.deviceId;
+    this.store.audioOutputList = list;
+    updateCurrentAudioContext(this.store, this.store.currentIds.audioOutput);
     /**
      * bind audio play event
      */
-    bindAudioOutputPlayEvent(store.audioRef);
+    this.#bindAudioOutputPlayEvent(this.store.audioRef);
     onStoreChange(["audioRef"], (audioRef) => {
-      bindAudioOutputPlayEvent(audioRef as HTMLAudioElement);
+      this.#bindAudioOutputPlayEvent(audioRef as HTMLAudioElement);
     });
   };
-  return function (dialogContainer: HTMLDialogElement) {
+
+  public create(container: HTMLElement) {
     const {
       mediaDeviceDetection,
       release,
@@ -627,140 +623,42 @@ function createDialogContentCreator(
       audioOutputList,
       releaseStream,
     } = useMediaDeviceDetection({
-      ...options,
-      onVolumeChange,
-      onCameraListReady,
-      onMicrophoneListReady,
-      onAudioOutputListReady,
+      ...this.options,
+      onVolumeChange: this.#onVolumeChange,
+      onCameraListReady: this.#onCameraListReady,
+      onMicrophoneListReady: this.#onMicrophoneListReady,
+      onAudioOutputListReady: this.#onAudioOutputListReady,
       mediaDeviceDetectionOptions: {
-        onGetCameraError,
-        onGetMicrophoneError,
-        onGetAudioOutputError,
+        onGetCameraError: this.#onGetCameraError,
+        onGetMicrophoneError: this.#onGetMicrophoneError,
+        onGetAudioOutputError: this.#onGetAudioOutputError,
       },
     });
 
     const watcher = mediaDeviceDetection.watchPermissions((type, status) => {
-      store.permission[type] = status === "granted";
+      this.store.permission[type] = status === "granted";
     });
 
     methodsStore.release = release;
     methodsStore.releaseStream = releaseStream;
-    store.mediaDeviceDetection = mediaDeviceDetection;
-    store.microphoneList = microphoneList.value;
-    store.cameraList = cameraList.value;
-    store.audioOutputList = audioOutputList.value;
-    dialogContainer.addEventListener("close", () => {
+    this.store.mediaDeviceDetection = mediaDeviceDetection;
+    this.store.microphoneList = microphoneList.value;
+    this.store.cameraList = cameraList.value;
+    this.store.audioOutputList = audioOutputList.value;
+
+    const nodes =
+      typeof this.customDialogContentCreator === "function"
+        ? this.customDialogContentCreator(container, this.store, this.options)
+        : defaultDialogContentCreator(container, this.store, this.options);
+
+    container.append.apply(container, nodes);
+
+    const dispose = () => {
+      AudioVisualization.stop();
       watcher.abort();
-      release([store.currentCameraStream]);
-    });
-
-    if (typeof customDialogContentCreator === "function") {
-      return customDialogContentCreator(dialogContainer, store, options);
-    }
-    return defaultDialogContentCreator(dialogContainer, store, options);
-  };
-}
-
-function createDialogView(
-  contentCreator: (dialogContainer: HTMLDialogElement) => (Node | string)[]
-) {
-  const dialog = document.createElement("dialog");
-  dialog.append.apply(dialog, contentCreator(dialog));
-  addClass(dialog, dialogContainerName);
-  return dialog;
-}
-
-function defineCustomElement(name: string) {
-  if (customElements.get(name)) {
-    return;
-  }
-  customElements.define(
-    name,
-    class extends HTMLDivElement {
-      constructor() {
-        super();
-      }
-    },
-    {
-      extends: "div",
-    }
-  );
-}
-
-function createShadow(
-  type: "dialog" | "panel",
-  ...nodes: (Node | HTMLElement | string)[]
-) {
-  const containerName =
-    type === "dialog" ? dialogContainerName : panelContainerName;
-  defineCustomElement(containerName);
-  const root = document.createElement(containerName);
-  const shadowRoot = root.attachShadow({ mode: "open" });
-  const styleTagId = `${prefix}style`;
-  const style = type === "dialog" ? dialogStyle : panelStyle;
-  addCSS(style, styleTagId, shadowRoot);
-  shadowRoot.append.apply(shadowRoot, nodes);
-  return {
-    shadowRoot,
-    root,
-  };
-}
-
-export function displayDialogView(
-  options: IMediaDeviceDetectionViewOptions = {
-    video: true,
-    audio: true,
-  },
-  customDialogContentCreator?: TCustomDialogContentCreator
-) {
-  const { promise, resolve } =
-    Promise.withResolvers<IMediaDeviceDetectionViewResolveValue>();
-  const contentCreator = createDialogContentCreator(
-    options,
-    globalStore,
-    customDialogContentCreator
-  );
-  const dialog = createDialogView(contentCreator);
-  const shadow = createShadow("dialog", dialog);
-
-  const deviceOk = () => {
-    let audioOk = true;
-    let videoOk = true;
-    if (options.video) {
-      videoOk =
-        globalStore.permission.camera && !!globalStore.currentCameraStream;
-    }
-    if (options.audio) {
-      audioOk =
-        globalStore.permission.microphone &&
-        !!globalStore.currentMicrophone &&
-        globalStore.microphoneHasVoice;
-    }
-    return audioOk && videoOk;
-  };
-
-  const getCurrentDeviceIds = () => {
-    const rs = { ...globalStore.currentIds };
-    Reflect.deleteProperty(rs, "__parentKey");
-    return rs;
-  };
-
-  dialog.addEventListener("close", () => {
-    AudioVisualization.stop();
-    shadow.root.remove();
-    cleanStoreEvent();
-    const value = {
-      returnValue: dialog.returnValue,
-      currentIds: getCurrentDeviceIds(),
-      deviceOk: deviceOk(),
+      release([this.store.currentCameraStream]);
     };
-    resolve(value);
-  });
 
-  Reflect.set(promise, "deviceOk", deviceOk);
-  Reflect.set(promise, "getCurrentIds", getCurrentDeviceIds);
-  Reflect.set(promise, "dialog", dialog);
-  document.body.append(shadow.root);
-  dialog.showModal();
-  return promise as IMediaDeviceDetectionViewReturnValue;
+    return dispose;
+  }
 }

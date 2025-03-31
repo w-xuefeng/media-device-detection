@@ -42,9 +42,13 @@ export function useMediaDeviceDetection(
     options?.mediaDeviceDetectionOptions
   );
 
-  const throttleVolumeChange = throttle((e: Event) => {
-    options?.onVolumeChange?.(e as CustomEvent<number>);
-  }, 50);
+  const throttleVolumeChange = throttle(
+    (e: Event) => {
+      options?.onVolumeChange?.(e as CustomEvent<number>);
+    },
+    50,
+    { trailing: true }
+  );
 
   function onVolumeChange(e: Event) {
     throttleVolumeChange(e);

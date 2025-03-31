@@ -1,7 +1,8 @@
-import { type IUseMediaDeviceDetectionOptions } from "../core/use-media-device-detection";
-import { type TGlobalStore } from "./store";
+import type { IUseMediaDeviceDetectionOptions } from "../../core/use-media-device-detection";
+import type { TGlobalStore } from "./store";
 export interface IMediaDeviceDetectionViewOptions extends IUseMediaDeviceDetectionOptions {
     testAudioURL?: string;
+    onClose?(returnValue?: string): void;
 }
 export interface IMediaDeviceDetectionViewResolveValue {
     returnValue: string;
@@ -19,7 +20,6 @@ export interface IMediaDeviceDetectionViewReturnValue extends Promise<IMediaDevi
         microphone: string;
         audioOutput: string;
     };
-    dialog: HTMLDialogElement;
+    container: HTMLElement;
 }
-export type TCustomDialogContentCreator = (dialogContainer: HTMLDialogElement, store: TGlobalStore, options: IMediaDeviceDetectionViewOptions) => (HTMLElement | Node)[];
-export declare function displayDialogView(options?: IMediaDeviceDetectionViewOptions, customDialogContentCreator?: TCustomDialogContentCreator): IMediaDeviceDetectionViewReturnValue;
+export type TCustomDialogContentCreator = (container: HTMLElement, store: TGlobalStore, options: IMediaDeviceDetectionViewOptions) => (HTMLElement | Node)[];

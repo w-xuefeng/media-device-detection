@@ -1,11 +1,11 @@
 import MediaDeviceDetection, {
   type ICameraInfo,
-} from "../core/media-device-detection";
+} from "../../core/media-device-detection";
 import {
   type IAudioOutputDeviceInfo,
   type IMicrophoneInfo,
-} from "../core/use-media-device-detection";
-import { watchObject } from "../utils";
+} from "../../core/use-media-device-detection";
+import { watchObject } from "../../utils";
 import style from "./style";
 
 export const prefix = "media-device-detection-";
@@ -19,6 +19,7 @@ export const {
   value: globalStore,
   onChange: onStoreChange,
   clean: cleanStoreEvent,
+  internalParentKey: IPK,
 } = watchObject(
   {
     currentIds: {
@@ -41,14 +42,13 @@ export const {
     audioRef: null as useTypes.data.Nullable<HTMLAudioElement>,
     audioOutputVisualizationContainer:
       null as useTypes.data.Nullable<HTMLDivElement>,
-    currentAudioOutputStream: null as useTypes.data.Nullable<MediaStream>,
     microphoneHasVoice: false,
     audioPaused: true,
     microphoneList: [] as IMicrophoneInfo[],
     cameraList: [] as ICameraInfo[],
     audioOutputList: [] as IAudioOutputDeviceInfo[],
     mediaDeviceDetection: null as useTypes.data.Nullable<MediaDeviceDetection>,
-    audioOutputDetectionMusic: "test.mp3",
+    audioOutputDetectionMusic: "",
   },
   {
     deep: true,

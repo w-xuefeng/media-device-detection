@@ -33,6 +33,7 @@ export declare function watchObject<T extends object>(object: T, options?: IWatc
     onChange: (properties: DeepKeyOf<T> | DeepKeyOf<T>[], callback: ((newValue: unknown, oldValue: unknown, newObject: T, changedProperty: string | symbol) => void | Promise<void>) & {
         watchProperties?: (string | symbol)[];
     }, once?: boolean) => void;
+    internalParentKey: string;
 };
 export declare function h<K extends keyof HTMLElementTagNameMap>(tagName: K, properties?: (Partial<Record<keyof HTMLElement, any>> & {
     attrs?: Record<string, string>;

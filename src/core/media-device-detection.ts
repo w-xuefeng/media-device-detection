@@ -1,4 +1,4 @@
-import { audioWorkletProcessorURL } from "./worker";
+import { audioWorkletProcessorURL, processorName } from "./worker";
 import CGF from "./config";
 
 export interface ICameraInfo extends MediaTrackCapabilities {
@@ -177,12 +177,13 @@ export default class MediaDeviceDetection {
         this.audioContext = new (globalThis.AudioContext ||
           // @ts-ignore
           globalThis.webkitAudioContext)();
+        const workletName = `-${deviceId}`;
         await this.audioContext.audioWorklet.addModule(
-          audioWorkletProcessorURL
+          audioWorkletProcessorURL(workletName)
         );
         this.audioWorkletNode = new AudioWorkletNode(
           this.audioContext,
-          "volume-detection-processor"
+          processorName(workletName)
         );
 
         /**

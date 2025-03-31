@@ -18,34 +18,48 @@
       align-items: center;
       overflow: hidden;
 
+      .btns {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        gap: 20px;
+      }
+
       .btn {
         width: 130px;
         height: 40px;
         color: #fff;
         border-radius: 5px;
         padding: 10px 25px;
-        font-family: 'Lato', sans-serif;
+        font-family: "Lato", sans-serif;
         font-weight: 500;
         background: transparent;
         cursor: pointer;
         transition: all 0.3s ease;
         position: relative;
         display: inline-block;
-        box-shadow: inset 2px 2px 2px 0px rgba(255, 255, 255, .5),
-          7px 7px 20px 0px rgba(0, 0, 0, .1),
-          4px 4px 5px 0px rgba(0, 0, 0, .1);
+        box-shadow:
+          inset 2px 2px 2px 0px rgba(255, 255, 255, 0.5),
+          7px 7px 20px 0px rgba(0, 0, 0, 0.1),
+          4px 4px 5px 0px rgba(0, 0, 0, 0.1);
         outline: none;
+      }
+
+      .btn-panel-stop {
+        display: none;
       }
 
       .detection-btn {
         background: rgb(0, 172, 238);
-        background: linear-gradient(0deg, rgba(0, 172, 238, 1) 0%, rgba(2, 126, 251, 1) 100%);
+        background: linear-gradient(0deg,
+            rgba(0, 172, 238, 1) 0%,
+            rgba(2, 126, 251, 1) 100%);
         width: 130px;
         height: 40px;
         line-height: 42px;
         padding: 0;
         border: none;
-
       }
 
       .detection-btn span {
@@ -120,27 +134,105 @@
         width: 100%;
       }
     }
+
+    media-device-detection-panel {
+      outline: 1px solid #ddd;
+      margin-block-start: 20px;
+      padding: 20px;
+    }
   </style>
 </head>
 
 <body>
-  <button class="btn detection-btn"><span>开始检测</span></button>
+  <section class="btns">
+    <button class="btn detection-btn btn-dialog">
+      <span>开始检测 - dialog</span>
+    </button>
+    <button class="btn detection-btn btn-panel-start">
+      <span>开始检测 - panel</span>
+    </button>
+    <button class="btn detection-btn btn-panel-stop">
+      <span>关闭检测 - panel</span>
+    </button>
+  </section>
   <script id="replace-script"></script>
   <script>
-    const startDetection = async () => {
-      const syncResult = globalThis?.mediaDeviceDetection?.displayDialogView?.({
+
+
+    const togglePanelBtn = (status) => {
+      const dialogBtn = document.querySelector(".btn-dialog");
+      const panelBtnStart = document.querySelector(
+        ".btn-panel-start",
+      );
+      const panelBtnStop = document.querySelector(".btn-panel-stop");
+      if (status) {
+        dialogBtn.style.display = "none";
+        panelBtnStart.style.display = "none";
+        panelBtnStop.style.display = "block";
+      } else {
+        dialogBtn.style.display = "block";
+        panelBtnStart.style.display = "block";
+        panelBtnStop.style.display = "none";
+      }
+    };
+
+    const startDetectionInDialog = async () => {
+      const syncResult = globalThis?.mediaDeviceDetection
+        ?.displayDialogView?.({
+          video: true,
+          audio: true,
+          testAudioURL: "test.mp3",
+        });
+      console.log(
+        "🚀 ~ startDetectionInDialog ~ syncResult:",
+        syncResult,
+      );
+      togglePanelBtn(true)
+      const asyncResult = await syncResult;
+      console.log(
+        "🚀 ~ startDetectionInDialog ~ asyncResult:",
+        asyncResult,
+      );
+      togglePanelBtn(false)
+    };
+
+
+    let panelEL;
+    const startDetectionInPanel = async () => {
+      panelEL = globalThis?.mediaDeviceDetection?.displayPanelView?.({
         video: true,
         audio: true,
-        testAudioURL: 'test.mp3'
-      })
-      console.log("🚀 ~ startDetection ~ syncResult:", syncResult)
-      const asyncResult = await syncResult;
-      console.log("🚀 ~ startDetection ~ asyncResult:", asyncResult)
-    }
+        testAudioURL: "test.mp3",
+        onClose(returnValue) {
+          const value = {
+            returnValue: returnValue,
+            currentIds: panelEL?.mediaDeviceDetection
+              .getCurrentDeviceIds(),
+            deviceOk: panelEL?.mediaDeviceDetection.deviceOk(),
+          };
+          console.log(
+            "🚀 ~ startDetectionInPanel onClose ~ value:",
+            value,
+          );
+          panelEL?.remove();
+          togglePanelBtn(false);
+        },
+      });
+      togglePanelBtn(true);
+    };
     window.onload = () => {
-      const btn = document.querySelector('.detection-btn')
-      btn.addEventListener('click', startDetection)
-    }
+      const dialogBtn = document.querySelector(".btn-dialog");
+      dialogBtn.addEventListener("click", startDetectionInDialog);
+      const panelBtnStart = document.querySelector(
+        ".btn-panel-start",
+      );
+      panelBtnStart.addEventListener("click", startDetectionInPanel);
+      const panelBtnStop = document.querySelector(".btn-panel-stop");
+      panelBtnStop.addEventListener("click", () => {
+        panelEL?.remove();
+        togglePanelBtn(false);
+      });
+    };
   </script>
 </body>
 

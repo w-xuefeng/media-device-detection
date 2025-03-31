@@ -208,6 +208,9 @@ export function watchObject<T extends object>(
 
   let events: ObjectChangedEvent[] = [];
 
+  /**
+   * internal parent object key
+   */
   const internalParentKey = "__parentKey";
 
   function on(callback: ObjectChangedBaseEvent, once = false) {
@@ -387,6 +390,7 @@ export function watchObject<T extends object>(
     onProperty,
     onProperties,
     onChange,
+    internalParentKey,
   };
 }
 

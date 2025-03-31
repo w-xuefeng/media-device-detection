@@ -6,6 +6,7 @@ const dialogFrom = path.resolve(
   "..",
   "src",
   "view",
+  "dialog",
   "dialog.css"
 );
 const panelFrom = path.resolve(
@@ -13,6 +14,7 @@ const panelFrom = path.resolve(
   "..",
   "src",
   "view",
+  "panel",
   "panel.css"
 );
 const target = path.resolve(
@@ -20,6 +22,7 @@ const target = path.resolve(
   "..",
   "src",
   "view",
+  "shared",
   "style.ts"
 );
 
