@@ -3,15 +3,15 @@
 
 ## How to use
 
-- 1.install via bun
+- 1.Install via bun
 
 ```bash
 bun add media-device-detection
 ```
 
-- 2.import what you need to your project
+- 2.Import what you need to your project
 
-  - using dialog view via calling a function
+  - Using dialog view via calling a function
   ```ts
   import { displayDialogView } from "media-device-detection";
 
@@ -25,7 +25,7 @@ bun add media-device-detection
   };
   ```
 
-  - using panel view via calling a function
+  - Using panel view via calling a function
   ```ts
   import { displayPanelView } from "media-device-detection";
 
@@ -47,7 +47,7 @@ bun add media-device-detection
   };
   ```
 
-  - using custom element
+  - Using custom element
   ```ts
   import { defineElement } from "media-device-detection";
   defineElement();
@@ -90,3 +90,45 @@ bun add media-device-detection
     console.log("🚀 ~ ON CONFIRM ~ value:", value)
   })
   ```
+
+  - Do it yourself
+    - Type signature
+    ```ts
+    interface IMicrophoneInfo extends MediaDeviceInfo {
+      extraDeviceId?: string;
+      extraLabel?: string;
+    }
+
+    interface IAudioOutputDeviceInfo extends MediaDeviceInfo {
+      extraDeviceId?: string;
+      extraLabel?: string;
+    }
+
+    interface IMediaDeviceDetectionOptions {
+      onGetCameraError: (error: Error) => void;
+      onGetMicrophoneError: (error: Error) => void;
+      onGetAudioOutputError: (error: Error) => void;
+    }
+
+    interface IUseMediaDeviceDetectionOptions {
+      video: boolean;
+      audio: boolean;
+      onVolumeChange?(e: CustomEvent<number>): void;
+      onCameraListReady?(e: ICameraInfo[]): void;
+      onMicrophoneListReady?(e: IMicrophoneInfo[]): void;
+      onAudioOutputListReady?(e: IAudioOutputDeviceInfo[]): void;
+      mediaDeviceDetectionOptions?: Partial<IMediaDeviceDetectionOptions>;
+    }
+    ```
+    - Use case
+    ```ts
+    import { useMediaDeviceDetection } from "media-device-detection";
+    const options: IUseMediaDeviceDetectionOptions = {
+      video: true,
+      audio: true
+      // .... other options
+    }
+    const result = useMediaDeviceDetection(options);
+    console.log("🚀 ~ result:", result)  
+    ```
+
