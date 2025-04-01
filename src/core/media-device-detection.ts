@@ -171,40 +171,38 @@ export default class MediaDeviceDetection {
    * 测试麦克风。将触发 volume-change 事件，带出音量值 [0-100]
    */
   async testMicrophone(deviceId: string) {
-    try {
-      if (!this.audioContext) {
-        // @ts-ignore
-        this.audioContext = new (globalThis.AudioContext ||
-          // @ts-ignore
-          globalThis.webkitAudioContext)();
-        const workletName = `-${deviceId}`;
-        await this.audioContext.audioWorklet.addModule(
-          audioWorkletProcessorURL(workletName)
-        );
-        this.audioWorkletNode = new AudioWorkletNode(
-          this.audioContext,
-          processorName(workletName)
-        );
+    /**
+     * 释放之前占用的资源
+     */
+    this.releaseMicrophone();
 
+    const workletName = `-${deviceId}`;
+    const workletURL = audioWorkletProcessorURL(workletName);
+    // @ts-ignore
+    this.audioContext = new (globalThis.AudioContext ||
+      // @ts-ignore
+      globalThis.webkitAudioContext)();
+    await this.audioContext.audioWorklet.addModule(workletURL);
+    this.audioWorkletNode = new AudioWorkletNode(
+      this.audioContext,
+      processorName(workletName)
+    );
+    /**
+     * 开始处理音频
+     */
+    this.audioWorkletNode.port.onmessage = (event) => {
+      if (event.data.type === "volumeChange") {
+        const volume = event.data.volume;
         /**
-         * 开始处理音频
+         * 处理音量变化事件，触发 volume-change 事件并传递音量值
          */
-        this.audioWorkletNode.port.onmessage = (event) => {
-          if (event.data.type === "volumeChange") {
-            const volume = event.data.volume;
-            /**
-             * 处理音量变化事件，触发 volume-change 事件并传递音量值
-             */
-            globalThis.dispatchEvent(
-              new CustomEvent(CGF.volumeChangeEventName, { detail: volume })
-            );
-          }
-        };
-        this.audioWorkletNode.connect(this.audioContext.destination);
-      } else {
-        this.closeCurrentMicrophone();
+        globalThis.dispatchEvent(
+          new CustomEvent(CGF.volumeChangeEventName, { detail: volume })
+        );
       }
-
+    };
+    this.audioWorkletNode.connect(this.audioContext.destination);
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { deviceId, echoCancellation: true },
       });
