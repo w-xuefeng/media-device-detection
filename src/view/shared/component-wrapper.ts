@@ -85,6 +85,7 @@ class MediaDeviceDetectionBaseElement {
   }
 
   connectView() {
+    this.disconnected();
     const rmStyle = this.#injectStyle();
     const creator = new MediaDeviceDetectionContentCreator(
       this.#root,
