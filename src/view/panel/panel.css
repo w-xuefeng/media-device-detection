@@ -1,13 +1,14 @@
 .media-device-detection-panel {
   --action-bar-height: 38px;
   --width: clamp(500px, 80vw, 1000px);
-  --height: clamp(300px, 60vh, 500px);
+  --height: clamp(300px, 60vmin, 500px);
 
   display: flex;
   flex-direction: column;
   width: var(--width);
   height: var(--height);
   border-color: transparent;
+  place-self: center;
 
   .acton-bar {
     height: var(--action-bar-height);

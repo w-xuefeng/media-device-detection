@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Component | Media Device Detection</title>
+  <style>
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+  </style>
+  <script id="replace-script"></script>
+  <script>
+    mediaDeviceDetection.defineElement()
+    window.onload = () => {
+      const dom = document.querySelector('media-device-detection-panel')
+      dom.addEventListener(mediaDeviceDetection.EVENTS.CONFIRM, (e) => {
+        const value = {
+          returnValue: e.detail,
+          currentIds: dom.mediaDeviceDetection.getCurrentDeviceIds(),
+          deviceOk: dom.mediaDeviceDetection.deviceOk(),
+        }
+        console.log("🚀 ~ ON_CONFIRM ~ value:", value)
+        alert(`the current devices id as follow: \n ${e.detail.replace(/\|/g, '\n').replace(/\:/g, ':\n  ')}`)
+      })
+      dom.addEventListener(mediaDeviceDetection.EVENTS.CANCEL, (e) => {
+        alert('you clicked the cancel button')
+      })
+    }
+  </script>
+</head>
+
+<body>
+  <media-device-detection-panel testAudioURL="/test.mp3"></media-device-detection-panel>
+</body>
+
+</html>

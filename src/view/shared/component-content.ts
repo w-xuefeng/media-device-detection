@@ -15,6 +15,7 @@ import {
 import { IconPause, IconPlay } from "../../utils/assets";
 import AudioVisualization from "../../utils/audio-visualization";
 import {
+  EVENTS,
   IPK,
   methodsStore,
   onStoreChange,
@@ -462,6 +463,8 @@ function defaultDialogContentCreator(
               ) {
                 container.close();
               }
+              container.dispatchEvent(new CustomEvent(EVENTS.CANCEL));
+              container.dispatchEvent(new CustomEvent(EVENTS.CLOSE));
             },
           },
         },
@@ -484,6 +487,10 @@ function defaultDialogContentCreator(
               ) {
                 container.close(returnValue);
               }
+              container.dispatchEvent(
+                new CustomEvent(EVENTS.CONFIRM, { detail: returnValue })
+              );
+              container.dispatchEvent(new CustomEvent(EVENTS.CLOSE));
             },
           },
         },
@@ -496,25 +503,33 @@ function defaultDialogContentCreator(
 }
 
 export class MediaDeviceDetectionContentCreator {
+  root: HTMLElement;
   options: IMediaDeviceDetectionViewOptions;
   store: TGlobalStore;
   customDialogContentCreator?: TCustomDialogContentCreator;
 
   constructor(
+    root: HTMLElement,
     options: IMediaDeviceDetectionViewOptions,
     store: TGlobalStore,
     customDialogContentCreator?: TCustomDialogContentCreator
   ) {
+    this.root = root;
     this.options = options;
     this.store = store;
     this.customDialogContentCreator = customDialogContentCreator;
-    if (options.testAudioURL) {
-      store.audioOutputDetectionMusic = options.testAudioURL;
+    if (this.options?.testAudioURL) {
+      store.audioOutputDetectionMusic = this.options.testAudioURL;
     }
   }
 
   #onVolumeChange = (e: CustomEvent<number>) => {
     this.options.onVolumeChange?.(e);
+    this.root.dispatchEvent(
+      new CustomEvent(EVENTS.VOLUME_CHANGE, {
+        detail: e.detail,
+      })
+    );
     if (!this.store.volumeRef) {
       return;
     }
@@ -537,16 +552,31 @@ export class MediaDeviceDetectionContentCreator {
   #onGetCameraError = (e: Error) => {
     console.log("onGetCameraError", e?.message);
     this.store.permission.camera = false;
+    this.root.dispatchEvent(
+      new CustomEvent(EVENTS.GET_CAMERA_ERROR, {
+        detail: e,
+      })
+    );
   };
 
   #onGetMicrophoneError = (e: Error) => {
     console.log("onGetMicrophoneError", e?.message);
     this.store.permission.microphone = false;
+    this.root.dispatchEvent(
+      new CustomEvent(EVENTS.GET_MICROPHONE_ERROR, {
+        detail: e,
+      })
+    );
   };
 
   #onGetAudioOutputError = (e: Error) => {
     console.log("onGetAudioOutputError", e?.message);
     this.store.permission.audioOutput = false;
+    this.root.dispatchEvent(
+      new CustomEvent(EVENTS.GET_AUDIO_OUTPUT_ERROR, {
+        detail: e,
+      })
+    );
   };
 
   #onCameraListReady = (data: ICameraInfo[]) => {
@@ -560,6 +590,11 @@ export class MediaDeviceDetectionContentCreator {
       this.store.currentCamera?.InputDeviceInfo.deviceId;
     this.store.cameraList = data;
     updateCurrentCameraMediaStream(this.store, this.store.currentCamera);
+    this.root.dispatchEvent(
+      new CustomEvent(EVENTS.CAMERA_LIST_READY, {
+        detail: data,
+      })
+    );
   };
 
   #onMicrophoneListReady = (e: IMicrophoneInfo[]) => {
@@ -576,6 +611,11 @@ export class MediaDeviceDetectionContentCreator {
     this.store.microphoneList = e;
     this.store.mediaDeviceDetection?.testMicrophone(
       this.store.currentIds.microphone
+    );
+    this.root.dispatchEvent(
+      new CustomEvent(EVENTS.MICROPHONE_LIST_READY, {
+        detail: e,
+      })
     );
   };
 
@@ -612,6 +652,11 @@ export class MediaDeviceDetectionContentCreator {
     onStoreChange(["audioRef"], (audioRef) => {
       this.#bindAudioOutputPlayEvent(audioRef as HTMLAudioElement);
     });
+    this.root.dispatchEvent(
+      new CustomEvent(EVENTS.AUDIO_OUTPUT_LIST_READY, {
+        detail: list,
+      })
+    );
   };
 
   public create(container: HTMLElement) {
@@ -651,9 +696,24 @@ export class MediaDeviceDetectionContentCreator {
         ? this.customDialogContentCreator(container, this.store, this.options)
         : defaultDialogContentCreator(container, this.store, this.options);
 
+    const eventDispatcher = new AbortController();
+    [EVENTS.CLOSE, EVENTS.CANCEL, EVENTS.CONFIRM].forEach((eventName) => {
+      container.addEventListener(
+        eventName,
+        (e) => {
+          this.root.dispatchEvent(
+            new CustomEvent(eventName, { detail: (e as CustomEvent)?.detail })
+          );
+        },
+        {
+          signal: eventDispatcher.signal,
+        }
+      );
+    });
     container.append.apply(container, nodes);
 
     const dispose = () => {
+      eventDispatcher.abort();
       AudioVisualization.stop();
       watcher.abort();
       release([this.store.currentCameraStream]);

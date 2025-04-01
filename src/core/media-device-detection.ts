@@ -224,20 +224,28 @@ export default class MediaDeviceDetection {
   }
 
   closeCurrentMicrophone() {
-    if (this.audioWorkletNode) {
-      this.micStreamSource?.disconnect(this.audioWorkletNode);
+    try {
+      if (this.audioWorkletNode) {
+        this.micStreamSource?.disconnect(this.audioWorkletNode);
+      }
+      this.micStream?.getAudioTracks().forEach((t) => {
+        t.stop();
+      });
+    } catch {
+      // ensure microphone was disconnected
     }
-    this.micStream?.getAudioTracks().forEach((t) => {
-      t.stop();
-    });
   }
 
   /**
    * 解除麦克风的占用
    */
   releaseMicrophone() {
-    this.closeCurrentMicrophone();
-    this.audioWorkletNode?.disconnect();
-    this.audioContext = null;
+    try {
+      this.closeCurrentMicrophone();
+      this.audioWorkletNode?.disconnect();
+      this.audioContext = null;
+    } catch {
+      // ensure audioWorkletNode was disconnected
+    }
   }
 }

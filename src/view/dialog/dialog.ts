@@ -28,9 +28,10 @@ export function displayDialogView(
   el.dialog.addEventListener("close", () => {
     const value = {
       returnValue: el.dialog.returnValue,
-      currentIds: el.mediaDeviceDetection.getCurrentDeviceIds(),
-      deviceOk: el.mediaDeviceDetection.deviceOk(),
+      currentIds: el.mediaDeviceDetection!.getCurrentDeviceIds(),
+      deviceOk: el.mediaDeviceDetection!.deviceOk(),
     };
+    el.remove();
     resolve(value);
   });
   document.body.append(el);

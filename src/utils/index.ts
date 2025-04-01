@@ -305,7 +305,10 @@ export function watchObject<T extends object>(
     if (!(event as ObjectChangedPropertyEvent).watchProperties) {
       (event as ObjectChangedBaseEvent)(target, p, newValue, oldValue);
     } else if (
-      (event as ObjectChangedPropertyEvent).watchProperties?.includes(p)
+      (event as ObjectChangedPropertyEvent).watchProperties?.includes(p) ||
+      (event as ObjectChangedPropertyEvent).watchProperties?.includes(
+        fullKeyPath
+      )
     ) {
       (event as ObjectChangedPropertyEvent)(newValue, oldValue, target, p);
     }
@@ -485,4 +488,17 @@ export function rerender(
     }
   });
   return result;
+}
+
+export function parseAttribute(attr: string) {
+  if (attr === "true") {
+    return true;
+  }
+  if (attr === "false") {
+    return false;
+  }
+  if (/^\d+$/.test(attr)) {
+    return Number(attr);
+  }
+  return attr;
 }

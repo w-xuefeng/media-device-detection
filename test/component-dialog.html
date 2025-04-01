@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dialog Component | Media Device Detection</title>
+  <style>
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .btn {
+      width: 130px;
+      height: 40px;
+      color: #fff;
+      border-radius: 5px;
+      padding: 10px 25px;
+      font-family: "Lato", sans-serif;
+      font-weight: 500;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      display: inline-block;
+      box-shadow:
+        inset 2px 2px 2px 0px rgba(255, 255, 255, 0.5),
+        7px 7px 20px 0px rgba(0, 0, 0, 0.1),
+        4px 4px 5px 0px rgba(0, 0, 0, 0.1);
+      outline: none;
+    }
+
+    .detection-btn {
+      background: rgb(0, 172, 238);
+      background: linear-gradient(0deg,
+          rgba(0, 172, 238, 1) 0%,
+          rgba(2, 126, 251, 1) 100%);
+      width: 130px;
+      height: 40px;
+      line-height: 42px;
+      padding: 0;
+      border: none;
+    }
+  </style>
+  <script id="replace-script"></script>
+  <script>
+    mediaDeviceDetection.defineElement()
+    window.onload = () => {
+      const btn = document.querySelector('.detection-btn');
+      const container = document.querySelector('media-device-detection-dialog');
+      container.addEventListener(mediaDeviceDetection.EVENTS.CONFIRM, (e) => {
+        const value = {
+          returnValue: e.detail,
+          currentIds: container.mediaDeviceDetection.getCurrentDeviceIds(),
+          deviceOk: container.mediaDeviceDetection.deviceOk(),
+        };
+        console.log("🚀 ~ ON CONFIRM ~ value:", value);
+      })
+      btn.addEventListener('click', () => {
+        container.showModal()
+      })
+    }
+  </script>
+</head>
+
+<body>
+  <media-device-detection-dialog testAudioURL="/test.mp3"></media-device-detection-dialog>
+  <button class="btn detection-btn">开始检测</button>
+</body>
+
+</html>

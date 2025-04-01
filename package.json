@@ -1,6 +1,6 @@
 {
   "name": "media-device-detection",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "lib/index.cjs.js",
   "module": "lib/index.esm.js",
   "types": "lib/types/index.d.ts",
@@ -17,7 +17,8 @@
   "scripts": {
     "clean": "rimraf lib",
     "build": "bun run scripts/style-loader.js && bun clean && tsc -b ./tsconfig.types.json && rolldown -c",
-    "test": "bun run build && bun test/serve.ts"
+    "test": "bun run build && bun test/serve.ts",
+    "prepublish": "bun run build"
   },
   "keywords": [],
   "author": "",

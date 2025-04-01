@@ -15,6 +15,19 @@ export const panelContainerName = `${prefix}panel`;
 export const dialogStyle = style.dialog;
 export const panelStyle = style.panel;
 
+export const EVENTS = {
+  CLOSE: "close",
+  CANCEL: "cancel",
+  CONFIRM: "confirm",
+  VOLUME_CHANGE: "volumeChange",
+  GET_CAMERA_ERROR: "getCameraError",
+  GET_MICROPHONE_ERROR: "getMicrophoneError",
+  GET_AUDIO_OUTPUT_ERROR: "getAudioOutputError",
+  CAMERA_LIST_READY: "cameraListReady",
+  MICROPHONE_LIST_READY: "microphoneListReady",
+  AUDIO_OUTPUT_LIST_READY: "audioOutputListReady",
+};
+
 export const {
   value: globalStore,
   onChange: onStoreChange,
