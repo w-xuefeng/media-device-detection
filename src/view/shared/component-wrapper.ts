@@ -201,3 +201,8 @@ export function createMediaDeviceDetectionElement(
 
   return element;
 }
+
+export function defineElement() {
+  defineCustomElement(dialogContainerName, MediaDeviceDetectionDialogElement);
+  defineCustomElement(panelContainerName, MediaDeviceDetectionPanelElement);
+}

@@ -39,4 +39,5 @@ export declare class MediaDeviceDetectionPanelElement extends HTMLElement {
     disconnectedCallback(): void;
 }
 export declare function createMediaDeviceDetectionElement(type: MDDEType, options: IMediaDeviceDetectionViewOptions, customDialogContentCreator?: TCustomDialogContentCreator): MediaDeviceDetectionDialogElement | MediaDeviceDetectionPanelElement;
+export declare function defineElement(): void;
 export {};
