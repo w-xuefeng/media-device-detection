@@ -609,14 +609,16 @@ export class MediaDeviceDetectionContentCreator {
       this.store.currentMicrophone.extraDeviceId ||
       this.store.currentMicrophone.deviceId;
     this.store.microphoneList = e;
-    this.store.mediaDeviceDetection?.testMicrophone(
-      this.store.currentIds.microphone
-    );
     this.root.dispatchEvent(
       new CustomEvent(EVENTS.MICROPHONE_LIST_READY, {
         detail: e,
       })
     );
+    setTimeout(() => {
+      this.store.mediaDeviceDetection?.testMicrophone(
+        this.store.currentIds.microphone
+      );
+    }, 500);
   };
 
   #bindAudioOutputPlayEvent = (audio: HTMLAudioElement | null) => {
