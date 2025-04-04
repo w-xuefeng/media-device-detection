@@ -4,6 +4,7 @@ import type { TGlobalStore } from "./store";
 export interface IMediaDeviceDetectionViewOptions
   extends IUseMediaDeviceDetectionOptions {
   testAudioURL?: string;
+  css?: string;
   onClose?(returnValue?: string): void;
 }
 

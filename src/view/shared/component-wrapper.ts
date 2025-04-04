@@ -71,7 +71,11 @@ class MediaDeviceDetectionBaseElement {
     this.#shadowRoot = shadowRoot;
     this.#container = container;
     this.#options = options;
-    this.#style = style || "";
+    this.#style = `${
+      style && options.css
+        ? `${style}${options.css}`
+        : style || options.css || ""
+    }`;
     this.#customDialogContentCreator = customDialogContentCreator?.bind(this);
     this.#shadowRoot.appendChild(this.#container);
     if (immediate) {

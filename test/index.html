@@ -136,10 +136,12 @@
     }
 
     media-device-detection-panel {
+      --dark-color: #353535;
       outline: 1px solid #ddd;
       margin-block-start: 20px;
       padding: 20px;
       width: fit-content;
+      background-color: var(--dark-color);
     }
   </style>
 </head>
@@ -204,6 +206,25 @@
         video: true,
         audio: true,
         testAudioURL: "test.mp3",
+        css: `.media-device-detection-panel{
+            --dark-color: #353535;
+            --dark-text-color: #9d9d9d;
+            .label {
+              color: hsl(from var(--dark-color) h s calc(l + 50))!important;
+            }
+            select,.cancel-btn {
+              background-color: var(--dark-color)!important;
+            }
+            .confirm-btn {
+              background-color: hsl(from var(--dark-color) h s calc(l - 20))!important;
+            }
+            .cancel-btn {
+              border: 1px solid hsl(from var(--dark-color) h s calc(l - 20))!important;
+            }
+          *{
+              color: var(--dark-text-color)!important;
+            }
+          }`,
         onClose(returnValue) {
           const value = {
             returnValue: returnValue,

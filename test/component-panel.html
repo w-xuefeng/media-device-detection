@@ -17,6 +17,7 @@
       justify-content: center;
       align-items: center;
       overflow: hidden;
+      background-color: #303131;
     }
   </style>
   <script id="replace-script"></script>
@@ -41,7 +42,16 @@
 </head>
 
 <body>
-  <media-device-detection-panel testAudioURL="/test.mp3"></media-device-detection-panel>
+  <media-device-detection-panel testAudioURL="/test.mp3" css="*{
+      color: #fff!important;
+      background-color:#303131!important;
+    }.cancel-btn{
+      border: 1px solid #fff!important;
+    }.confirm-btn {
+      border: 1px solid #fff!important;
+      background-color: hsl(from #303131 h s calc(l - 50))!important;
+    }
+    "></media-device-detection-panel>
 </body>
 
 </html>
